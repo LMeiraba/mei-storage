@@ -1,0 +1,54 @@
+{
+  "pools": [
+    {
+      "label": "Google Pool",
+      "name": "Google Pool",
+      "remotes": [
+        "gdrive1",
+        "gdrive2"
+      ],
+      "mountPoint": "X:",
+      "startup": true
+    },
+    {
+      "name": "Second Pool",
+      "remotes": [
+        "gdrive3",
+        "gdrive4"
+      ],
+      "mountPoint": "Y:",
+      "startup": true
+    }
+  ],
+  "drives": [
+    {
+      "name": "Meiraba-main",
+      "type": "drive"
+    },
+    {
+      "name": "Music-1",
+      "type": "drive"
+    },
+    {
+      "name": "gdrive1",
+      "type": "drive"
+    },
+    {
+      "name": "gdrive2",
+      "type": "drive"
+    },
+    {
+      "name": "gdrive4",
+      "label": "gdrive4-",
+      "type": "drive",
+      "mountPoint": ":",
+      "startup": false
+    },
+    {
+      "name": "gdrive3",
+      "label": "gdrive3-",
+      "mountPoint": ":",
+      "startup": false
+    }
+  ]
+}

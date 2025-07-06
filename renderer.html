@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>MEI Storage - Google Pool Manager</title>
+    <link rel="stylesheet" href="assets/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+
+<body>
+    <div class="app-container">
+        <div class="sidebar">
+            <div class="logo">MEI</div>
+            <ul class="menu">
+                <li onclick="showTab('activity')" id="tab-activity" class="active">Activity</li>
+                <li onclick="showTab('notification')" id="tab-notification">Notification</li>
+                <li onclick="handlePoolsTab()" id="tab-pools">Pools</li>
+                <li onclick="handleDrivesTab('drives')" id="tab-drives">Drives</li>
+                <li onclick="showTab('settings')" id="tab-settings">Settings</li>
+            </ul>
+        </div>
+        <div class="main-content">
+            <div id="activity" class="tab">
+                <h2>Transfer Activity</h2>
+                <div id="activity-list"></div>
+            </div>
+            <div id="notification" class="tab" style="display: none;">
+                <h2>Recent Notification</h2>
+                <div id="notification-list"></div>
+            </div>
+            <div id="pools" class="tab" style="display: none;">
+                <div id="pools-container"></div>
+            </div>
+            <div id="drives" class="tab" style="display: none;">
+                <div id="drives-container"></div>
+            </div>
+            <div id="settings" class="tab" style="display: none;">
+                Settings here
+                <br>
+                app version: 1.0.0-beta.1
+                <br>
+                rclone version: 1.70.2
+                <br>
+                rclone path: default compiled
+                <br>
+                startup: true
+                <br>
+            </div>
+        </div>
+    </div>
+    <script src="renderer.js"></script>
+    <!-- Confirmation Modal -->
+    <div id="confirmation-modal" class="modal-overlay hidden">
+        <div class="modal-box">
+            <div class="modal-header">
+                <h3 id="confirm-message"></h3>
+            </div>
+            <div id="modal-feedback" style="display:none; font-size: 14px; margin-top: 15px;"></div>
+
+            <div id="modal-spinner" class="spinner" style="display: none;"></div>
+
+            <div class="modal-actions" id="confirm-actions">
+                <button onclick="confirmYes()" class="yes-btn">Yes</button>
+                <button onclick="confirmNo()" class="no-btn">Cancel</button>
+            </div>
+        </div>
+    </div>
+    </div>
+    <!-- 🔄 Global Loading Overlay -->
+    <div id="loading-overlay" class="overlay hidden">
+        <div class="loading-box">
+            <div class="spinner"></div>
+            <div class="loading-text">Loading...</div>
+        </div>
+    </div>
+
+    <!-- 📊 Usage Modal -->
+    <div id="usage-modal" class="usage-modal hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <span>📊 Storage Usage</span>
+                <button onclick="closeModal('usage-modal')" class="close-btn">&times;</button>
+            </div>
+            <div class="modal-body">
+                <!-- Error -->
+                <div id="usage-error" class="modal-error hidden">❌ Failed to load usage data.</div>
+
+                <!-- Usage Bar -->
+                <div class="total-usage" id="total-usage-section">
+                    <label>Total Usage:</label>
+                    <div class="usage-bar">
+                        <div class="usage-fill" id="total-usage-fill"></div>
+                    </div>
+                    <div class="usage-stats" id="total-usage-text">Used / Total</div>
+                </div>
+
+                <!-- Chart (Drive Breakdown) -->
+                <div class="chart-container" id="chart-container">
+                    <canvas id="usage-polar-chart" width="300" height="300"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!--form modal(for pool/drive)-->
+    <div id="form-modal" class="form-modal hidden">
+        <div class="form-content-box">
+            <h3 id="form-modal-title">Add Pool</h3>
+
+            <div class="form-group">
+                <label for="form-name">Name</label>
+                <input type="text" id="form-name">
+            </div>
+            <div class="form-group">
+                <label for="form-label">Label</label>
+                <input type="text" id="form-label">
+            </div>
+            <div class="form-group">
+                <label for="form-mount">Mount Point</label>
+                <input type="text" id="form-mount" class="mount-input" pattern="[A-Z]" maxlength="1">
+            </div>
+            <div id="remote-selector" class="dropdown-select hidden">
+                <label>Select Remotes</label>
+                <input id="remote-search" type="text" placeholder="Type to search..."
+                    oninput="filterRemoteOptions(this.value)" />
+                <div id="selected-remotes" class="selected-list"></div>
+                <div id="remote-options" class="dropdown-options"></div>
+            </div>
+
+            <div id="type-selector" class="hidden">
+                <label for="drive-type-input">Drive Type</label>
+                <select id="drive-type-input">
+                    <option value="">Choose type</option>
+                    <!-- Options injected dynamically -->
+                </select>
+            </div>
+            <div class="startup-toggle">
+                <input type="checkbox" id="form-startup">
+                <label for="form-startup">Mount at startup</label>
+            </div>
+
+            <div class="form-modal-footer">
+                <button class="cancel-btn" onclick="closeFormModal()">Cancel</button>
+                <button id="form-submit-btn" onclick="submitFormModal()">Save</button>
+            </div>
+        </div>
+    </div>
+    <div id="auth-progress-modal" class="form-modal hidden">
+        <div class="form-content-box" style="display: flex; flex-direction: column; align-items: center;">
+            <h3>Authorizing New Drive</h3>
+            <pre id="auth-log-stream" class="log-box"
+                style="margin-top: 10px; height: 180px; overflow-y: auto;">Initializing...</pre>
+            <div class="spinner" id="auth-spinner" style="margin-top: 10px;"></div>
+        </div>
+    </div>
+
+</body>
+
+</html>

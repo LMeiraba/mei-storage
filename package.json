@@ -1,0 +1,62 @@
+{
+  "name": "mei-storage",
+  "version": "1.0.0-beta.1",
+  "description": "Desktop app to manage pooled Google Drive storage using Rclone",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "pack": "electron-builder --dir",
+    "dist": "electron-builder"
+  },
+  "build": {
+    "appId": "com.meiraba.storage",
+    "productName": "MEI Storage",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "renderer.html",
+      "renderer.js",
+      "pool-manager.js",
+      "settings.json",
+      "icon.ico",
+      "bin/**"
+    ],
+    "extraResources": [
+      {
+        "from": "bin/rclone.exe",
+        "to": "bin/rclone.exe"
+      }
+    ],
+    "win": {
+      "target": [
+        "nsis",
+        "portable"
+      ],
+      "icon": "icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": true,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "MEI Storage"
+    }
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "electron-store": "^8.2.0",
+    "get-port": "^5.1.1",
+    "node-fetch": "^3.3.2",
+    "sudo-prompt": "^9.2.1"
+  },
+  "devDependencies": {
+    "electron": "^37.2.0",
+    "electron-builder": "^26.0.12"
+  }
+}
