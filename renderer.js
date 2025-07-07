@@ -51,7 +51,7 @@ function renderPools(pools) {
         card.innerHTML = `
     <div class="card-header">
       <div>
-        <h2>${pool.mountPoint} ${pool.label}</h2>
+        <h2>${pool.mountPoint??''} ${pool.label}</h2>
         <small>${pool.name}</small>
       </div>
       <div class="card-actions">

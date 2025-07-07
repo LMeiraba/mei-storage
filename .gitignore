@@ -1,2 +1,4 @@
 node_modules/
 dist/
+/icon.png
+/settings.json

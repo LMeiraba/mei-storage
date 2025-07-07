@@ -10,11 +10,11 @@ const activeMounts = {
     drives: []
 };
 
-const CONFIG_PATH = path.join(
-    os.platform() === 'win32' ? process.env.APPDATA : path.join(os.homedir(), '.config'),
-    'rclone',
-    'rclone.conf'
-);
+// const CONFIG_PATH = path.join(
+//     os.platform() === 'win32' ? process.env.APPDATA : path.join(os.homedir(), '.config'),
+//     'rclone',
+//     'rclone.conf'
+// );
 
 function parseINI(str) {
     const result = {};
@@ -42,13 +42,12 @@ function stringifyINI(data) {
         .join('\n\n');
 }
 
-function updateRcloneConfig(basePath) {
-    const SETTINGS_PATH = path.join(basePath, 'settings.json');
-    let settings = JSON.parse(fs.readFileSync(SETTINGS_PATH, 'utf-8'))
+function updateRcloneConfig(_paths) {
+    let settings = JSON.parse(fs.readFileSync(_paths.settings, 'utf-8'))
     settings.pools = settings.pools.filter(p => p.remotes.length >= 2)
     let config = {};
-    if (fs.existsSync(CONFIG_PATH)) {
-        const raw = fs.readFileSync(CONFIG_PATH, 'utf-8');
+    if (fs.existsSync(_paths.config)) {
+        const raw = fs.readFileSync(_paths.config, 'utf-8');
         config = parseINI(raw);
     }
 
@@ -59,17 +58,16 @@ function updateRcloneConfig(basePath) {
         };
     }
 
-    fs.writeFileSync(CONFIG_PATH, stringifyINI(config), 'utf-8');
+    fs.writeFileSync(_paths.config, stringifyINI(config), 'utf-8');
     console.log(`✅ rclone.conf updated with ${settings.pools.length} pool(s).`);
 }
 
 // Mount every pool, for startup
-async function mountPools(basePath) {
-    const SETTINGS_PATH = path.join(basePath, 'settings.json');
-    let settings = JSON.parse(fs.readFileSync(SETTINGS_PATH, 'utf-8'))
+async function mountPools(_paths) {
+    let settings = JSON.parse(fs.readFileSync(_paths.settings, 'utf-8'))
     settings.pools = settings.pools.filter(p => p.remotes.length >= 2 && p.startup)
 
-    const rclonePath = path.join(basePath, 'bin', 'rclone.exe');
+    const rclonePath = _paths.rclone
 
     for (const pool of settings.pools) {
         console.log(`🚀 Mounting ${pool.name} -> ${pool.mountPoint}`);
@@ -86,16 +84,17 @@ async function mountPools(basePath) {
         await startMount(pool, 'pools', rclonePath);
     }
     //set drive icons for all
-    setDriveIcon(settings.pools.map(p => p.mountPoint), path.join(basePath, 'icon.ico'));
+    setDriveIcon(settings.pools.map(p => p.mountPoint), _paths.icon);
 }
-function singleMount(name, type, basePath) {
-    const SETTINGS_PATH = path.join(basePath, 'settings.json');
-    let settings = JSON.parse(fs.readFileSync(SETTINGS_PATH, 'utf-8'))
+function singleMount(name, type, _paths) {
+    let settings = JSON.parse(fs.readFileSync(_paths.settings, 'utf-8'))
     let data = settings[`${type}s`].find(d => d.name === name)
     if (!data.mountPoint) return 'No mount point specified for this drive/pool';
-    const rclonePath = path.join(basePath, 'bin', 'rclone.exe');
+    const rclonePath = _paths.rclone
+    console.log(data)
     let m = startMount(data, `${type}s`, rclonePath);
-    setDriveIcon([data.mountPoint], path.join(basePath, 'icon.ico'));
+    console.log(m)
+    setDriveIcon([data.mountPoint], _paths.icon);
     return m
 }
 async function unmountPool(poolName) {
@@ -136,46 +135,43 @@ function unmountAll() {
         unmountPool(pools.name);
     }
 }
-function deletePool(poolName,basePath) {
-    const SETTINGS_PATH = path.join(basePath, 'settings.json');
-    let settings = JSON.parse(fs.readFileSync(SETTINGS_PATH, 'utf-8'))
-    if (!fs.existsSync(CONFIG_PATH)) return [];
-    const content = fs.readFileSync(CONFIG_PATH, 'utf8');
+function deletePool(poolName,_paths) {
+    let settings = JSON.parse(fs.readFileSync(_paths.settings, 'utf-8'))
+    if (!fs.existsSync(_paths.config)) return [];
+    const content = fs.readFileSync(_paths.config, 'utf8');
     const parsed = parseINI(content);
     if (parsed[poolName] && parsed[poolName].type === 'union') {
         let mounted = activeMounts.pools.filter(p => p.name === poolName)
         if(mounted) unmountPool(poolName)
         delete parsed[poolName];
         settings.pools = settings.pools.filter(p => p.name !== poolName);
-        fs.writeFileSync(SETTINGS_PATH, JSON.stringify(settings, null, 2), 'utf-8');
-        fs.writeFileSync(CONFIG_PATH, stringifyINI(parsed), 'utf-8');
+        fs.writeFileSync(_paths.settings, JSON.stringify(settings, null, 2), 'utf-8');
+        fs.writeFileSync(_paths.config, stringifyINI(parsed), 'utf-8');
         return true
     } else {
         return false
     }
 }
-function deleteDrive(driveName,basePath) {
-    const SETTINGS_PATH = path.join(basePath, 'settings.json');
-    let settings = JSON.parse(fs.readFileSync(SETTINGS_PATH, 'utf-8'))
-    if (!fs.existsSync(CONFIG_PATH)) return [];
-    const content = fs.readFileSync(CONFIG_PATH, 'utf8');
+function deleteDrive(driveName,_paths) {
+    let settings = JSON.parse(fs.readFileSync(_paths.settings, 'utf-8'))
+    if (!fs.existsSync(_paths.config)) return [];
+    const content = fs.readFileSync(_paths.config, 'utf8');
     const parsed = parseINI(content);
     if (parsed[driveName] && parsed[driveName].type !== 'union') {
         let mounted = activeMounts.drives.filter(d => d.name === driveName)
         if(mounted) unmountDrive(driveName)
         delete parsed[driveName];
         settings.drives = settings.drives.filter(d => d.name !== driveName);
-        fs.writeFileSync(SETTINGS_PATH, JSON.stringify(settings, null, 2), 'utf-8');
-        fs.writeFileSync(CONFIG_PATH, stringifyINI(parsed), 'utf-8');
+        fs.writeFileSync(_paths.settings, JSON.stringify(settings, null, 2), 'utf-8');
+        fs.writeFileSync(_paths.config, stringifyINI(parsed), 'utf-8');
         return true
     } else {
         return false
     }
 }
-async function getUsage(name, type, basePath) {
-    const rclonePath = path.join(basePath, 'bin', 'rclone.exe');
-    const SETTINGS_PATH = path.join(basePath, 'settings.json');
-    const settings = JSON.parse(fs.readFileSync(SETTINGS_PATH, 'utf-8'));
+async function getUsage(name, type, _paths) {
+    const rclonePath = _paths.rclone
+    const settings = JSON.parse(fs.readFileSync(_paths.settings, 'utf-8'));
 
     let remotes = [];
 
@@ -210,6 +206,7 @@ async function getUsage(name, type, basePath) {
 }
 
 async function getActivity() {
+    //how to filter syncing files from actual transfer??
     const combinedMounts = [
         ...activeMounts.pools.map((m, i) => ({ ...m, mountIndex: i, mountType: 'pool' })),
         ...activeMounts.drives.map((m, i) => ({ ...m, mountIndex: i + activeMounts.pools.length, mountType: 'drive' }))
@@ -231,18 +228,17 @@ async function getActivity() {
     console.log([...transferring, ...transferred])
     return [...transferring, ...transferred];
 }
-function addPool(data, basePath) {
-    const SETTINGS_PATH = path.join(basePath, 'settings.json');
-    let settings = JSON.parse(fs.readFileSync(SETTINGS_PATH, 'utf-8'))
-    if (!fs.existsSync(CONFIG_PATH)) return [];
-    const content = fs.readFileSync(CONFIG_PATH, 'utf8');
+function addPool(data, _paths) {
+    let settings = JSON.parse(fs.readFileSync(_paths.settings, 'utf-8'))
+    if (!fs.existsSync(_paths.config)) return [];
+    const content = fs.readFileSync(_paths.config, 'utf8');
     const parsed = parseINI(content);
 
     parsed[data.name] = {
         type: 'union',
         upstreams: data.remotes.map(r => `${r}:/`).join(' ')
     };
-    fs.writeFileSync(CONFIG_PATH, stringifyINI(parsed), 'utf-8');
+    fs.writeFileSync(_paths.config, stringifyINI(parsed), 'utf-8');
     settings.pools.push({
         name: data.name,
         label: data.label || data.name,
@@ -250,20 +246,19 @@ function addPool(data, basePath) {
         mountPoint: data.mountPoint,
         startup: data.startup || false
     });
-    fs.writeFileSync(SETTINGS_PATH, JSON.stringify(settings, null, 2), 'utf-8');
+    fs.writeFileSync(_paths.settings, JSON.stringify(settings, null, 2), 'utf-8');
 }
-function addDrive(data, basePath) {
-    const SETTINGS_PATH = path.join(basePath, 'settings.json');
-    let settings = JSON.parse(fs.readFileSync(SETTINGS_PATH, 'utf-8'))
-    if (!fs.existsSync(CONFIG_PATH)) return [];
-    const content = fs.readFileSync(CONFIG_PATH, 'utf8');
+function addDrive(data, _paths) {
+    let settings = JSON.parse(fs.readFileSync(_paths.settings, 'utf-8'))
+    if (!fs.existsSync(_paths.config)) return [];
+    const content = fs.readFileSync(_paths.config, 'utf8');
     const parsed = parseINI(content);
 
     parsed[data.name] = {
         type: data.type,
         token: data.token
     };
-    fs.writeFileSync(CONFIG_PATH, stringifyINI(parsed), 'utf-8');
+    fs.writeFileSync(_paths.config, stringifyINI(parsed), 'utf-8');
     settings.drives.push({
         name: data.name,
         label: data.label || data.name,
@@ -271,20 +266,19 @@ function addDrive(data, basePath) {
         mountPoint: data.mountPoint,
         startup: data.startup || false
     });
-    fs.writeFileSync(SETTINGS_PATH, JSON.stringify(settings, null, 2), 'utf-8');
+    fs.writeFileSync(_paths.settings, JSON.stringify(settings, null, 2), 'utf-8');
 }
-function editPool(data, basePath) {
-    const SETTINGS_PATH = path.join(basePath, 'settings.json');
-    let settings = JSON.parse(fs.readFileSync(SETTINGS_PATH, 'utf-8'))
-    if (!fs.existsSync(CONFIG_PATH)) return [];
-    const content = fs.readFileSync(CONFIG_PATH, 'utf8');
+function editPool(data, _paths) {
+    let settings = JSON.parse(fs.readFileSync(_paths.settings, 'utf-8'))
+    if (!fs.existsSync(_paths.config)) return [];
+    const content = fs.readFileSync(_paths.config, 'utf8');
     const parsed = parseINI(content);
 
     parsed[data.name] = {
         type: 'union',
         upstreams: data.remotes.map(r => `${r}:/`).join(' ')
     };
-    fs.writeFileSync(CONFIG_PATH, stringifyINI(parsed), 'utf-8');
+    fs.writeFileSync(_paths.config, stringifyINI(parsed), 'utf-8');
     settings.pools = settings.pools.filter(p => p.name!==data.name)
     settings.pools.push({
         name: data.name,
@@ -293,11 +287,10 @@ function editPool(data, basePath) {
         mountPoint: data.mountPoint,
         startup: data.startup || false
     });
-    fs.writeFileSync(SETTINGS_PATH, JSON.stringify(settings, null, 2), 'utf-8');
+    fs.writeFileSync(_paths.settings, JSON.stringify(settings, null, 2), 'utf-8');
 }
-function editDrive(data, basePath) {
-    const SETTINGS_PATH = path.join(basePath, 'settings.json');
-    let settings = JSON.parse(fs.readFileSync(SETTINGS_PATH, 'utf-8'))
+function editDrive(data, _paths) {
+    let settings = JSON.parse(fs.readFileSync(_paths.settings, 'utf-8'))
     settings.drives = settings.drives.filter(d => d.name !== data.name)
     settings.drives.push({
         name: data.name,
@@ -305,7 +298,7 @@ function editDrive(data, basePath) {
         mountPoint: data.mountPoint,
         startup: data.startup || false
     });
-    fs.writeFileSync(SETTINGS_PATH, JSON.stringify(settings, null, 2), 'utf-8');
+    fs.writeFileSync(_paths.settings, JSON.stringify(settings, null, 2), 'utf-8');
 }
 module.exports = {
     updateRcloneConfig,
@@ -325,6 +318,7 @@ module.exports = {
     activeMounts
 }
 function setDriveIcon(driveLetters, iconPath) {
+    console.log(`icon: ${iconPath}`)
     // If path is like 'X:', convert to just 'X'
     let cmds = []
     for (let i = 0; i < driveLetters.length; i++) {

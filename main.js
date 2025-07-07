@@ -13,18 +13,47 @@ const CONFIG_PATH = path.join(
     'rclone',
     'rclone.conf'
 );
+
 const isDev = !app.isPackaged;
-const basePath = isDev ? __dirname : path.join(process.resourcesPath);
-console.log(basePath)
-const rclonePath = path.join(basePath, 'bin', 'rclone.exe');
+const basePath = isDev ? __dirname : path.join(process.resourcesPath,'app.asar');
+const rclonePath = path.join(isDev ? __dirname : process.resourcesPath, 'bin', 'rclone.exe');
+let userDataPath = app.getPath("userData");
+let settingsPath = isDev
+    ? path.join(__dirname, "settings.json")
+    : path.join(userDataPath, "settings.json");
+let destIcon = path.join(__dirname,"icon.ico")
+console.log(settingsPath)
+let _paths = {
+    config: CONFIG_PATH,
+    rclone: rclonePath,
+    base: basePath,
+    userData: userDataPath,
+    settings: settingsPath,
+    icon: destIcon
+}
+if (!fs.existsSync(settingsPath)) {
+    fs.writeFileSync(settingsPath, JSON.stringify({ pools: [], drives: [] }, null, 2));
+    if (!isDev) {
+        const srcIcon = path.join(_paths.base, "icon.ico");
+        _paths.icon = path.join(_paths.userData, "icon.ico");
+        try {
+            if (fs.existsSync(srcIcon)) {
+                fs.copyFileSync(srcIcon, _paths.icon);
+            }
+        } catch (err) {
+            console.error("Failed to copy icon.ico:", err);
+        }
+    }
+}
+
 function createWindow() {
     const windowBounds = store.get("windowBounds", { width: 900, height: 600 });
 
     win = new BrowserWindow({
         ...windowBounds,
-        icon: path.join(basePath, "icon.ico"),
+        icon: path.join(_paths.base, "icon.ico"),
         webPreferences: {
-            preload: path.join(basePath, "preload.js"),
+            preload: path.join(_paths.base, "preload.js"),
         },
     });
 
@@ -32,8 +61,8 @@ function createWindow() {
     win.setMenu(null)
     if (isDev) win.webContents.openDevTools();
     win.webContents.on("did-fail-load", (_, errorCode, errorDescription) => {
-    console.error("Renderer failed to load:", errorDescription);
-});
+        console.error("Renderer failed to load:", errorDescription);
+    });
     win.on("resize", () => store.set("windowBounds", win.getBounds()));
     win.on("move", () => store.set("windowBounds", win.getBounds()));
     // Instead of quitting when closed, just hide
@@ -75,10 +104,11 @@ function createTray() {
 }
 ipcMain.handle("get-pools", async () => {
     //also updates setting.json from the orgs
-    const SETTINGS_PATH = path.join(basePath, 'settings.json');
-    let settings = JSON.parse(fs.readFileSync(SETTINGS_PATH, 'utf-8'))
-    if (!fs.existsSync(CONFIG_PATH)) return [];
-    const content = fs.readFileSync(CONFIG_PATH, 'utf8');
+    // const SETTINGS_PATH = path.join(basePath, 'app.asar', 'settings.json');
+    let settings = JSON.parse(fs.readFileSync(_paths.settings, 'utf-8'))
+
+    if (!fs.existsSync(_paths.config)) return [];
+    const content = fs.readFileSync(_paths.config, 'utf8');
     const parsed = parseINI(content);
 
     let existing_names = settings.pools.map(p => p.name)
@@ -86,11 +116,11 @@ ipcMain.handle("get-pools", async () => {
         .filter(([name, config]) => (!existing_names.includes(name) && config.type === 'union'))
         .map(([name, config]) => ({
             name,
-            remotes: config.upstreams.split(':/').map(s => s.trim())
+            remotes: config.upstreams.split(':/').map(s => s.trim()).filter(s => s.length)
         }));
     console.log(`Found ${new_from_config.length} new pools from config.`);
     settings.pools = settings.pools.concat(new_from_config)
-    fs.writeFileSync(SETTINGS_PATH, JSON.stringify(settings, null, 2), 'utf-8');
+    fs.writeFileSync(_paths.settings, JSON.stringify(settings, null, 2), 'utf-8');
     let x = settings.pools.map(pool => {
         return {
             ...pool,
@@ -104,10 +134,10 @@ ipcMain.handle("get-pools", async () => {
     return x
 })
 ipcMain.handle("get-drives", async () => {
-    const SETTINGS_PATH = path.join(basePath, 'settings.json');
-    let settings = JSON.parse(fs.readFileSync(SETTINGS_PATH, 'utf-8'))
-    if (!fs.existsSync(CONFIG_PATH)) return [];
-    const content = fs.readFileSync(CONFIG_PATH, 'utf8');
+    // const SETTINGS_PATH = path.join(basePath, 'app.asar', 'settings.json');
+    let settings = JSON.parse(fs.readFileSync(_paths.settings, 'utf-8'))
+    if (!fs.existsSync(_paths.config)) return [];
+    const content = fs.readFileSync(_paths.config, 'utf8');
     const parsed = parseINI(content);
 
     const DRIVE_TYPES = [
@@ -122,7 +152,7 @@ ipcMain.handle("get-drives", async () => {
             type: config.type,
         }))
     settings.drives = settings.drives.concat(new_from_config)
-    fs.writeFileSync(SETTINGS_PATH, JSON.stringify(settings, null, 2), 'utf-8');
+    fs.writeFileSync(_paths.settings, JSON.stringify(settings, null, 2), 'utf-8');
     console.log(`Found ${new_from_config.length} new drives from config.`);
     return settings.drives.map(drive => {
         return {
@@ -142,77 +172,76 @@ ipcMain.handle("unmount-drive", async (event, driveName) => {
     return await poolManager.unmountDrive(driveName);
 });
 ipcMain.handle("single-mount", async (event, name, type) => {
-    return await poolManager.singleMount(name, type,basePath);
+    return await poolManager.singleMount(name, type, _paths);
 });
 ipcMain.handle("get-usage", async (event, name, type) => {
-    return await poolManager.getUsage(name, type,basePath);
+    return await poolManager.getUsage(name, type, _paths);
 });
 ipcMain.handle("delete", async (event, name, type) => {
     if (type === "pool") {
-        await poolManager.deletePool(name,basePath);
+        await poolManager.deletePool(name, _paths);
     } else if (type === "drive") {
-        await poolManager.deleteDrive(name,basePath);
+        await poolManager.deleteDrive(name, _paths);
     }
     return true;
 });
 ipcMain.handle("get-activity", async () => {
     return await poolManager.getActivity();
 })
-ipcMain.handle("edit", async (event,type, data) => {
+ipcMain.handle("edit", async (event, type, data) => {
     if (type === "pool") {
-        await poolManager.editPool(data,basePath);
+        await poolManager.editPool(data, _paths);
     } else if (type === "drive") {
-        await poolManager.editDrive(data,basePath);
+        await poolManager.editDrive(data, _paths);
     }
     return true;
 });
-ipcMain.handle("add", async (event,type, data) => {
+ipcMain.handle("add", async (event, type, data) => {
     if (type === "pool") {
-        await poolManager.addPool(data,basePath);
+        await poolManager.addPool(data, _paths);
     } else if (type === "drive") {
-        await poolManager.addDrive(data,basePath);
+        await poolManager.addDrive(data, _paths);
     }
     return true;
 })
-ipcMain.on('start-auth', (event,d) => {
-  const proc = spawn(rclonePath, ['authorize', d.type || 'drive']);
+ipcMain.on('start-auth', (event, d) => {
+    const proc = spawn(_paths.rclone, ['authorize', d.type || 'drive']);
 
-  let output = '';
+    let output = '';
 
-  proc.stdout.on('data', (data) => {
-    const text = data.toString();
-    output += text;
-    event.sender.send('auth-log', `${text}`);
-  });
+    proc.stdout.on('data', (data) => {
+        const text = data.toString();
+        output += text;
+        event.sender.send('auth-log', `${text}`);
+    });
 
-  proc.stderr.on('data', (data) => {
-    const text = data.toString();
-    event.sender.send('auth-log', `${text}`);
-  });
+    proc.stderr.on('data', (data) => {
+        const text = data.toString();
+        event.sender.send('auth-log', `${text}`);
+    });
 
-  proc.on('close', (code) => {
-    if (code !== 0) {
-      return event.sender.send('auth-log', `[ERR] Authorization failed`);
-    }
+    proc.on('close', (code) => {
+        if (code !== 0) {
+            return event.sender.send('auth-log', `[ERR] Authorization failed`);
+        }
 
-    const match = output.match(/\{[\s\S]*\}/);
-    if (!match) {
-      return event.sender.send('auth-log', `[ERR] Token not found`);
-    }
+        const match = output.match(/\{[\s\S]*\}/);
+        if (!match) {
+            return event.sender.send('auth-log', `[ERR] Token not found`);
+        }
 
-    const token = match[0];
-    event.sender.send('auth-complete', token,d); // send token on success
-  });
+        const token = match[0];
+        event.sender.send('auth-complete', token, d); // send token on success
+    });
 });
-app.whenReady().then(async() => {
+app.whenReady().then(async () => {
     const openedAtLogin = app.getLoginItemSettings().wasOpenedAtLogin;
-
+    createWindow();
     createTray();
 
     // Mount drives either way
-    poolManager.updateRcloneConfig(basePath);
-    poolManager.mountPools(basePath);
-    createWindow();
+    poolManager.updateRcloneConfig(_paths);
+    poolManager.mountPools(_paths);
 
     if (!openedAtLogin || isDev) {
         win.show(); // Show only if NOT auto-launched or if in dev
