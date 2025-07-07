@@ -23,6 +23,7 @@ let settingsPath = isDev
     : path.join(userDataPath, "settings.json");
 let destIcon = path.join(__dirname,"icon.ico")
 console.log(settingsPath)
+
 let _paths = {
     config: CONFIG_PATH,
     rclone: rclonePath,
@@ -30,6 +31,9 @@ let _paths = {
     userData: userDataPath,
     settings: settingsPath,
     icon: destIcon
+}
+if (!fs.existsSync(_paths.config)){
+    fs.writeFileSync(CONFIG_PATH,stringifyINI({}),'utf-8')
 }
 if (!fs.existsSync(settingsPath)) {
     fs.writeFileSync(settingsPath, JSON.stringify({ pools: [], drives: [] }, null, 2));
@@ -274,6 +278,15 @@ function parseINI(str) {
     }
     return result;
 }
+function stringifyINI(data) {
+    return Object.entries(data)
+        .map(([section, values]) => {
+            const lines = Object.entries(values).map(([k, v]) => `${k} = ${v}`);
+            return `[${section}]\n${lines.join('\n')}`;
+        })
+        .join('\n\n');
+}
+
 // setInterval(async() => {
 //     await poolManager.getActivity();
 // }, interval = 5000); // Adjust interval as needed
