@@ -71,3 +71,7 @@ This will generate:
 - ❗ Better Error Reporting and Feedback
 - 🔍 Mount Detection and Health Monitoring
 - 🖌️ Custom Icon for each drive
+
+### 💬 Discord
+
+[https://discord.gg/invite/Eyvkfhm5N7](https://discord.gg/invite/Eyvkfhm5N7)

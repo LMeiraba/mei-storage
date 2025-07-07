@@ -15,13 +15,13 @@ const CONFIG_PATH = path.join(
 );
 
 const isDev = !app.isPackaged;
-const basePath = isDev ? __dirname : path.join(process.resourcesPath,'app.asar');
+const basePath = isDev ? __dirname : path.join(process.resourcesPath, 'app.asar');
 const rclonePath = path.join(isDev ? __dirname : process.resourcesPath, 'bin', 'rclone.exe');
 let userDataPath = app.getPath("userData");
 let settingsPath = isDev
     ? path.join(__dirname, "settings.json")
     : path.join(userDataPath, "settings.json");
-let destIcon = path.join(__dirname,"icon.ico")
+let destIcon = path.join(__dirname, "icon.ico")
 console.log(settingsPath)
 
 let _paths = {
@@ -32,24 +32,23 @@ let _paths = {
     settings: settingsPath,
     icon: destIcon
 }
-if (!fs.existsSync(_paths.config)){
-    fs.writeFileSync(CONFIG_PATH,stringifyINI({}),'utf-8')
+if (!fs.existsSync(_paths.config)) {
+    fs.writeFileSync(CONFIG_PATH, stringifyINI({}), 'utf-8')
 }
 if (!fs.existsSync(settingsPath)) {
     fs.writeFileSync(settingsPath, JSON.stringify({ pools: [], drives: [] }, null, 2));
-    if (!isDev) {
-        const srcIcon = path.join(_paths.base, "icon.ico");
-        _paths.icon = path.join(_paths.userData, "icon.ico");
-        try {
-            if (fs.existsSync(srcIcon)) {
-                fs.copyFileSync(srcIcon, _paths.icon);
-            }
-        } catch (err) {
-            console.error("Failed to copy icon.ico:", err);
+}
+if (!isDev) {
+    const srcIcon = path.join(_paths.base, "icon.ico");
+    _paths.icon = path.join(_paths.userData, "icon.ico");
+    try {
+        if (fs.existsSync(srcIcon)&&!fs.existsSync(_paths.icon)) {
+            fs.copyFileSync(srcIcon, _paths.icon);
         }
+    } catch (err) {
+        console.error("Failed to copy icon.ico:", err);
     }
 }
-
 function createWindow() {
     const windowBounds = store.get("windowBounds", { width: 900, height: 600 });
 
