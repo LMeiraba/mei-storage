@@ -59,7 +59,6 @@ This will generate:
 ## 🖼️ More ScreenShots
 
 ![Screenshot](img/3.png)
-
 ![Screenshot](img/4.png)
 ![Screenshot](img/5.png)
 ![Screenshot](img/6.png)
@@ -71,3 +70,4 @@ This will generate:
 - 🔔 In-app Notifications
 - ❗ Better Error Reporting and Feedback
 - 🔍 Mount Detection and Health Monitoring
+- 🖌️ Custom Icon for each drive

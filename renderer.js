@@ -584,7 +584,7 @@ async function submitFormModal() {
         mountPoint: mount,
         startup,
         remotes: currentFormType === "pool" ? selectedRemotes : null,
-        type: currentFormType === "drive" ? (selectedType || document.getElementById("drive-type-input").value) : null,
+        type: currentFormType === "drive" ? (selectedType || document.getElementById("drive-type-input").value) : 'drive',
     }
     console.log("Form data:", data);
     if (currentFormType === "pool") {

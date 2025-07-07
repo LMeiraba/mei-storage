@@ -1,6 +1,6 @@
 {
   "name": "mei-storage",
-  "version": "1.0.1-beta.1",
+  "version": "1.0.2-beta.1",
   "description": "Desktop app to manage pooled Google Drive storage using Rclone",
   "main": "main.js",
   "scripts": {

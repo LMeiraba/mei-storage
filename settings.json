@@ -1,4 +1,44 @@
 {
-  "pools": [],
-  "drives": []
+  "pools": [
+    {
+      "name": "Google Pool",
+      "remotes": [
+        "gdrive1",
+        "gdrive2"
+      ]
+    },
+    {
+      "name": "Second Pool",
+      "remotes": [
+        "gdrive3",
+        "gdrive4"
+      ]
+    }
+  ],
+  "drives": [
+    {
+      "name": "Meiraba-main",
+      "type": "drive"
+    },
+    {
+      "name": "Music-1",
+      "type": "drive"
+    },
+    {
+      "name": "gdrive1",
+      "type": "drive"
+    },
+    {
+      "name": "gdrive2",
+      "type": "drive"
+    },
+    {
+      "name": "gdrive3",
+      "type": "drive"
+    },
+    {
+      "name": "gdrive4",
+      "type": "drive"
+    }
+  ]
 }
