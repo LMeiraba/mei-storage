@@ -442,6 +442,7 @@ async function checkAlive() {
 }
 async function getEmail(token) {//for google drive
     try {
+        //run any rclone cmd to refresh
         console.log(token)
         let req = await fetch('https://www.googleapis.com/drive/v3/about?fields=user', {
             headers: {

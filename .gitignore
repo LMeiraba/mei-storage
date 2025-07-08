@@ -2,3 +2,4 @@ node_modules/
 dist/
 /icon.png
 /test.js
+/settings.json

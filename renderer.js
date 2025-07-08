@@ -597,12 +597,13 @@ async function submitFormModal() {
         type: currentFormType === "drive" ? (selectedType || document.getElementById("drive-type-input").value) : null,
     }
     if(!editMode && !name) {
+        //maybe check if name already exist?
         return showToast('Name is a required field!', 'error')
     }
     if(currentFormType === "pool" && data.remotes.length <2){
         return showToast('At Least two remotes need to selected!', 'error')
     }
-    if(currentFormType === "drive" && !data.type){
+    if(!editMode && currentFormType === "drive" && !data.type){
         return showToast('You need to select a type!', 'error')
     }
     if(data.startup){
