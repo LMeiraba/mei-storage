@@ -15,7 +15,7 @@ const CONFIG_PATH = path.join(
 );
 const configDir = path.dirname(CONFIG_PATH);
 if (!fs.existsSync(configDir)) {
-  fs.mkdirSync(configDir, { recursive: true });
+    fs.mkdirSync(configDir, { recursive: true });
 }
 const isDev = !app.isPackaged;
 const basePath = isDev ? __dirname : path.join(process.resourcesPath, 'app.asar');
@@ -45,7 +45,7 @@ if (!isDev) {
     const srcIcon = path.join(_paths.base, "icon.ico");
     _paths.icon = path.join(_paths.userData, "icon.ico");
     try {
-        if (fs.existsSync(srcIcon)&&!fs.existsSync(_paths.icon)) {
+        if (fs.existsSync(srcIcon) && !fs.existsSync(_paths.icon)) {
             fs.copyFileSync(srcIcon, _paths.icon);
         }
     } catch (err) {
@@ -121,6 +121,7 @@ ipcMain.handle("get-pools", async () => {
     let new_from_config = Object.entries(parsed)
         .filter(([name, config]) => (!existing_names.includes(name) && config.type === 'union'))
         .map(([name, config]) => ({
+            ...config,
             name,
             remotes: config.upstreams.split(':/').map(s => s.trim()).filter(s => s.length)
         }));
@@ -156,6 +157,7 @@ ipcMain.handle("get-drives", async () => {
         .map(([name, config]) => ({
             name,
             type: config.type,
+            user: config.user
         }))
     settings.drives = settings.drives.concat(new_from_config)
     fs.writeFileSync(_paths.settings, JSON.stringify(settings, null, 2), 'utf-8');
@@ -210,12 +212,30 @@ ipcMain.handle("add", async (event, type, data) => {
     }
     return true;
 })
+ipcMain.handle('get-used-mounts', async () => {
+    try {
+        const settings = JSON.parse(fs.readFileSync(_paths.settings, 'utf-8'));
+        return [
+            ...settings.pools?.filter(p => p.startup).map(p => p.mountPoint) || [],
+            ...settings.drives?.filter(d => d.startup).map(d => d.mountPoint) || []
+        ];
+    } catch (err) {
+        console.error('get-used-mounts failed:', err.message);
+        return [];
+    }
+})
+let auth_process = null
 ipcMain.on('start-auth', (event, d) => {
+    if (d === 'cancel') {
+        auth_process.kill()
+        return
+    }
     let types = {
         "Google Drive": 'drive'
     }
-    const proc = spawn(_paths.rclone, ['authorize', types[d.type] || 'drive']);
-
+    d.type = types[d.type] ?? 'drive'
+    const proc = spawn(_paths.rclone, ['authorize', d.type || 'drive']);
+    auth_process = proc
     let output = '';
 
     proc.stdout.on('data', (data) => {
@@ -295,3 +315,26 @@ function stringifyINI(data) {
 // setInterval(async() => {
 //     await poolManager.getActivity();
 // }, interval = 5000); // Adjust interval as needed
+// setInterval(async () => {
+//     let settings = JSON.parse(fs.readFileSync(_paths.settings, 'utf-8'))
+//     let to_get = settings.drives.filter(d => !d.user)
+//     const content = fs.readFileSync(_paths.config, 'utf8');
+//     const config = parseINI(content);
+//     if (config[to_get[0].name] && config?.[to_get[0].name]?.type === to_get[0].type) {
+//         //exist
+//         let mail = await poolManager.getEmail(config[to_get[0].name].token)
+//         console.log(mail)
+//         if (mail) {
+//             let settings = JSON.parse(fs.readFileSync(_paths.settings, 'utf-8'))
+//             let index = settings.drives.findIndex(d => d.name === to_get[0].name)
+//             if (index !== -1) {
+//                 settings.drives[index] = {
+//                     ...settings.drives[index],
+//                     user: mail
+//                 };
+//             }
+//             fs.writeFileSync(_paths.settings, JSON.stringify(settings, null, 2), 'utf-8');
+//         }
+//     }
+
+// }, 40000);

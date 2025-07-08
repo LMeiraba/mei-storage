@@ -11,6 +11,7 @@ contextBridge.exposeInMainWorld("driveAPI", {
     delete: (name, type) => ipcRenderer.invoke("delete", name, type),
     edit: (type, data) => ipcRenderer.invoke("edit", type, data),
     add: (type, data) => ipcRenderer.invoke("add", type, data),
+    getUsedMounts: () => ipcRenderer.invoke('get-used-mounts'),
     startAuth: (data) => ipcRenderer.send('start-auth',data),
     onLog: (cb) => ipcRenderer.on('auth-log', (_, msg) => cb(msg)),
     onComplete: (cb) => ipcRenderer.on('auth-complete', (_, token,d) => cb(token, d)),

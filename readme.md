@@ -3,7 +3,7 @@
 A modern Electron-based desktop app to manage Google Drive remotes and Rclone pools with a sleek dark UI — no terminal needed.
 
 (it can manage any drive supported by rclone)
-
+> YOU NEED [WINFSP](https://winfsp.dev/rel/) TO WORK
 ---
 <p align="center">
   <img src="img/1.png" alt="Screenshot 1" width="50%" />

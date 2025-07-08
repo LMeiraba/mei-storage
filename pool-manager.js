@@ -135,14 +135,14 @@ function unmountAll() {
         unmountPool(pools.name);
     }
 }
-function deletePool(poolName,_paths) {
+function deletePool(poolName, _paths) {
     let settings = JSON.parse(fs.readFileSync(_paths.settings, 'utf-8'))
     if (!fs.existsSync(_paths.config)) return [];
     const content = fs.readFileSync(_paths.config, 'utf8');
     const parsed = parseINI(content);
     if (parsed[poolName] && parsed[poolName].type === 'union') {
         let mounted = activeMounts.pools.filter(p => p.name === poolName)
-        if(mounted) unmountPool(poolName)
+        if (mounted) unmountPool(poolName)
         delete parsed[poolName];
         settings.pools = settings.pools.filter(p => p.name !== poolName);
         fs.writeFileSync(_paths.settings, JSON.stringify(settings, null, 2), 'utf-8');
@@ -152,14 +152,14 @@ function deletePool(poolName,_paths) {
         return false
     }
 }
-function deleteDrive(driveName,_paths) {
+function deleteDrive(driveName, _paths) {
     let settings = JSON.parse(fs.readFileSync(_paths.settings, 'utf-8'))
     if (!fs.existsSync(_paths.config)) return [];
     const content = fs.readFileSync(_paths.config, 'utf8');
     const parsed = parseINI(content);
     if (parsed[driveName] && parsed[driveName].type !== 'union') {
         let mounted = activeMounts.drives.filter(d => d.name === driveName)
-        if(mounted) unmountDrive(driveName)
+        if (mounted) unmountDrive(driveName)
         delete parsed[driveName];
         settings.drives = settings.drives.filter(d => d.name !== driveName);
         fs.writeFileSync(_paths.settings, JSON.stringify(settings, null, 2), 'utf-8');
@@ -248,9 +248,8 @@ function addPool(data, _paths) {
     });
     fs.writeFileSync(_paths.settings, JSON.stringify(settings, null, 2), 'utf-8');
 }
-function addDrive(data, _paths) {
+async function addDrive(data, _paths) {
     let settings = JSON.parse(fs.readFileSync(_paths.settings, 'utf-8'))
-    console.log()
     if (!fs.existsSync(_paths.config)) return [];
     const content = fs.readFileSync(_paths.config, 'utf8');
     const parsed = parseINI(content);
@@ -259,7 +258,7 @@ function addDrive(data, _paths) {
         type: data.type,
         token: data.token
     };
-    fs.writeFileSync(_paths.config, stringifyINI(parsed), 'utf-8');m
+    fs.writeFileSync(_paths.config, stringifyINI(parsed), 'utf-8');
     settings.drives.push({
         name: data.name,
         label: data.label || data.name,
@@ -268,6 +267,21 @@ function addDrive(data, _paths) {
         startup: data.startup || false
     });
     fs.writeFileSync(_paths.settings, JSON.stringify(settings, null, 2), 'utf-8');
+    // if (data.type === 'drive') {
+    //     //get google drive email
+    //     let mail = await getEmail(data.token)
+    //     if (mail) {
+    //         let settings = JSON.parse(fs.readFileSync(_paths.settings, 'utf-8'))
+    //         let index = settings.drives.findIndex(d => d.name === data.name)
+    //         if (index !== -1) {
+    //             settings.drives[index] = {
+    //                 ...settings.drives[index],
+    //                 user: mail
+    //             };
+    //         }
+    //         fs.writeFileSync(_paths.settings, JSON.stringify(settings, null, 2), 'utf-8');
+    //     }
+    // }
 }
 function editPool(data, _paths) {
     let settings = JSON.parse(fs.readFileSync(_paths.settings, 'utf-8'))
@@ -280,25 +294,36 @@ function editPool(data, _paths) {
         upstreams: data.remotes.map(r => `${r}:/`).join(' ')
     };
     fs.writeFileSync(_paths.config, stringifyINI(parsed), 'utf-8');
-    settings.pools = settings.pools.filter(p => p.name!==data.name)
-    settings.pools.push({
-        name: data.name,
-        label: data.label || data.name,
-        remotes: data.remotes,
-        mountPoint: data.mountPoint,
-        startup: data.startup || false
-    });
+    // settings.pools = settings.pools.filter(p => p.name !== data.name)
+    // settings.pools.push({
+    //     name: data.name,
+    //     label: data.label || data.name,
+    //     remotes: data.remotes,
+    //     mountPoint: data.mountPoint,
+    //     startup: data.startup || false
+    // });
+    let index = settings.pools.findIndex(p => p.name === data.name)
+    if (index !== -1) {
+        settings.pools[index] = {
+            ...settings.pools[index],
+            ...data,
+        }
+    }
     fs.writeFileSync(_paths.settings, JSON.stringify(settings, null, 2), 'utf-8');
 }
 function editDrive(data, _paths) {
     let settings = JSON.parse(fs.readFileSync(_paths.settings, 'utf-8'))
-    settings.drives = settings.drives.filter(d => d.name !== data.name)
-    settings.drives.push({
-        name: data.name,
-        label: data.label || data.name,
-        mountPoint: data.mountPoint,
-        startup: data.startup || false
-    });
+    let index = settings.drives.findIndex(d => d.name === data.name)
+    // settings.drives = settings.drives.filter(d => d.name !== data.name)
+    // settings.drives.push();
+    if (index !== -1) {
+        settings.drives[index] = {
+            ...settings.drives[index],
+            label: data.label,
+            startup: data.startup || false,
+            mountPoint: data.mountPoint
+        };
+    }
     fs.writeFileSync(_paths.settings, JSON.stringify(settings, null, 2), 'utf-8');
 }
 module.exports = {
@@ -316,6 +341,7 @@ module.exports = {
     getActivity,
     editPool,
     editDrive,
+    getEmail,
     activeMounts
 }
 function setDriveIcon(driveLetters, iconPath) {
@@ -414,18 +440,20 @@ async function getTransfersForMount(mount, mountIndex, mountType) {
 async function checkAlive() {
     //if mount failed? no connection(internet)
 }
-async function getEmail(token) {
-    fetch('https://www.googleapis.com/drive/v3/about?fields=user', {
-  headers: {
-    Authorization: `Bearer ${token.access_token}`
-  }
-})
-  .then(res => res.json())
-  .then(data => {
-    console.log(data)
-    console.log('📧 Email:', data.user.emailAddress);
-  })
-  .catch(err => {
-    console.error('❌ Error fetching email:', err);
-  });
+async function getEmail(token) {//for google drive
+    try {
+        console.log(token)
+        let req = await fetch('https://www.googleapis.com/drive/v3/about?fields=user', {
+            headers: {
+                Authorization: `Bearer ${token.access_token}`
+            }
+        })
+        let data = await req.json()
+        console.log(data)
+        return data?.user?.emailAddress
+    } catch (e) {
+        console.log(`error getting email`, e)
+        return null
+    }
+
 } 

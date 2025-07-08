@@ -38,7 +38,7 @@
             <div id="settings" class="tab" style="display: none;">
                 Settings here
                 <br>
-                app version: 1.0.3-beta.1
+                app version: 2.0.0-beta.1
                 <br>
                 rclone version: 1.70.2
                 <br>
@@ -145,8 +145,13 @@
             </div>
         </div>
     </div>
+    <!--auth flow-->
     <div id="auth-progress-modal" class="form-modal hidden">
         <div class="form-content-box" style="display: flex; flex-direction: column; align-items: center;">
+            <div class="modal-header"
+                style="align-self: flex-end; width: 100%; display: flex; justify-content: flex-end;">
+                <button class="close-btn" onclick="cancelAuth('auth-progress-modal')">&times;</button>
+            </div>
             <h3>Authorizing New Drive</h3>
             <pre id="auth-log-stream" class="log-box"
                 style="margin-top: 10px; height: 180px; overflow-y: auto;">Initializing...</pre>

@@ -71,6 +71,7 @@ function renderPools(pools) {
       </div>
     </div>
     <div class="status-indicator">
+      <span class="startup"style="color: #4caf50">${pool.startup? '🚀Startup  ':``}</span>
       <span class="status-dot ${isMounted ? 'online' : 'offline'}"></span>
       <span class="status-text">${statusText}</span>
     </div>
@@ -99,14 +100,16 @@ function renderDrives(drives) {
     addCard.onclick = handleAddDrive;
     container.appendChild(addCard);
     drives.forEach(drive => {
+        console.log(drive)
         const card = document.createElement("div");
         card.className = "drive-card";
-
+        const statusColor = drive.mounted ? "rgba(0, 255, 0, 0.08)" : "rgb(43, 47, 58)";
+        card.style.backgroundColor = statusColor;
         card.innerHTML = `
       <div class="card-header">
         <div>
-          <h2>${drive.label??drive.name}</h2>
-          <small>${drive.type}${drive.email? ` • mail: ${drive.email}`: ''}</small>
+          <h2>${drive.mountPoint??''} ${drive.label??drive.name}</h2>
+          <small>${drive.type}${drive.user? ` • mail: ${drive.user}`: ''}</small>
         </div>
         <div class="card-actions">
           <button ${drive.mounted ? 'disabled' : ''} onclick="showConfirmation('Mount this drive?', 'handleMount','${drive.name}','drive')">🔼 Mount</button>
@@ -118,6 +121,12 @@ function renderDrives(drives) {
           <button class="primary" onclick="handleUsage('${drive.name}','drive')">📊 Usage</button>
           <button class="danger" onclick="showConfirmation('Mount this drive?', 'handleDelete','${drive.name}','drive')">🗑️ Delete</button>
       </div>
+      ${drive.mounted?
+         `<div class="status-indicator">
+            <span class="status-dot online"></span>
+            <span class="status-text">Mounted</span>
+        </div>`
+        :''}
     `;
         container.appendChild(card);
     });
@@ -575,7 +584,8 @@ async function submitFormModal() {
     console.log("Submitting form...");
     const name = document.getElementById("form-name").value.trim();
     const label = document.getElementById("form-label").value.trim();
-    const mount = document.getElementById("form-mount").value.trim().toUpperCase() + ":";
+    let mount = document.getElementById("form-mount").value.trim().toUpperCase();
+    if(mount.length) mount = mount  + ":"
     const startup = document.getElementById("form-startup").checked;
     //selectedRemotes, selectedType
     let data = {
@@ -584,7 +594,25 @@ async function submitFormModal() {
         mountPoint: mount,
         startup,
         remotes: currentFormType === "pool" ? selectedRemotes : null,
-        type: currentFormType === "drive" ? (selectedType || document.getElementById("drive-type-input").value) : 'drive',
+        type: currentFormType === "drive" ? (selectedType || document.getElementById("drive-type-input").value) : null,
+    }
+    if(!editMode && !name) {
+        return showToast('Name is a required field!', 'error')
+    }
+    if(currentFormType === "pool" && data.remotes.length <2){
+        return showToast('At Least two remotes need to selected!', 'error')
+    }
+    if(currentFormType === "drive" && !data.type){
+        return showToast('You need to select a type!', 'error')
+    }
+    if(data.startup){
+        if(!data.mountPoint){
+            return showToast('You need to specify a mount point to set startup.', 'error')
+        }
+        let startup_mounts = await window.driveAPI.getUsedMounts()
+        if(startup_mounts.includes(data.mountPoint)){
+            return showToast(`Mount point ${data.mountPoint} is already used for startup mount.`,'error')
+        }
     }
     console.log("Form data:", data);
     if (currentFormType === "pool") {
@@ -668,7 +696,13 @@ function showAuthModal() {
     document.getElementById('auth-spinner').style.display = 'block';
     document.getElementById('auth-progress-modal').classList.remove('hidden');
 }
-
+function cancelAuth(){
+    document.getElementById('auth-progress-modal').classList.add('hidden');
+    document.getElementById('auth-log-stream').textContent = ''
+    document.getElementById('auth-spinner').style.display = 'none'
+    window.driveAPI.startAuth('cancel')
+    showToast('Drive auth cancelled!','warning')
+}
 function updateAuthLog(line) {
     line = line.includes('NOTICE:') ? line.split('NOTICE: ')[1] : ''
     const el = document.getElementById('auth-log-stream');
