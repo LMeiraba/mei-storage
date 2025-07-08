@@ -250,6 +250,7 @@ function addPool(data, _paths) {
 }
 function addDrive(data, _paths) {
     let settings = JSON.parse(fs.readFileSync(_paths.settings, 'utf-8'))
+    console.log()
     if (!fs.existsSync(_paths.config)) return [];
     const content = fs.readFileSync(_paths.config, 'utf8');
     const parsed = parseINI(content);
@@ -258,7 +259,7 @@ function addDrive(data, _paths) {
         type: data.type,
         token: data.token
     };
-    fs.writeFileSync(_paths.config, stringifyINI(parsed), 'utf-8');
+    fs.writeFileSync(_paths.config, stringifyINI(parsed), 'utf-8');m
     settings.drives.push({
         name: data.name,
         label: data.label || data.name,

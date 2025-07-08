@@ -116,7 +116,7 @@ function renderDrives(drives) {
       <div class="card-footer">
           <button onclick="handleEdit('${drive.name}','drive')">Edit</button>
           <button class="primary" onclick="handleUsage('${drive.name}','drive')">📊 Usage</button>
-          <button class="danger" onclick="showConfirmation('Mount this drive?', 'handleDelete',s'${drive.name}','drive')">🗑️ Delete</button>
+          <button class="danger" onclick="showConfirmation('Mount this drive?', 'handleDelete','${drive.name}','drive')">🗑️ Delete</button>
       </div>
     `;
         container.appendChild(card);
