@@ -13,7 +13,10 @@ const CONFIG_PATH = path.join(
     'rclone',
     'rclone.conf'
 );
-
+const configDir = path.dirname(CONFIG_PATH);
+if (!fs.existsSync(configDir)) {
+  fs.mkdirSync(configDir, { recursive: true });
+}
 const isDev = !app.isPackaged;
 const basePath = isDev ? __dirname : path.join(process.resourcesPath, 'app.asar');
 const rclonePath = path.join(isDev ? __dirname : process.resourcesPath, 'bin', 'rclone.exe');

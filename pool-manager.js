@@ -413,5 +413,18 @@ async function getTransfersForMount(mount, mountIndex, mountType) {
 async function checkAlive() {
     //if mount failed? no connection(internet)
 }
-async function getEmail() {
+async function getEmail(token) {
+    fetch('https://www.googleapis.com/drive/v3/about?fields=user', {
+  headers: {
+    Authorization: `Bearer ${token.access_token}`
+  }
+})
+  .then(res => res.json())
+  .then(data => {
+    console.log(data)
+    console.log('📧 Email:', data.user.emailAddress);
+  })
+  .catch(err => {
+    console.error('❌ Error fetching email:', err);
+  });
 } 
