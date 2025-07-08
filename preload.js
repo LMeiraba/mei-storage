@@ -13,5 +13,5 @@ contextBridge.exposeInMainWorld("driveAPI", {
     add: (type, data) => ipcRenderer.invoke("add", type, data),
     startAuth: (data) => ipcRenderer.send('start-auth',data),
     onLog: (cb) => ipcRenderer.on('auth-log', (_, msg) => cb(msg)),
-    onComplete: (cb) => ipcRenderer.on('auth-complete', (_, token) => cb(token)),
+    onComplete: (cb) => ipcRenderer.on('auth-complete', (_, token,d) => cb(token, d)),
 });

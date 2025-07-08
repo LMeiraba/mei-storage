@@ -211,7 +211,10 @@ ipcMain.handle("add", async (event, type, data) => {
     return true;
 })
 ipcMain.on('start-auth', (event, d) => {
-    const proc = spawn(_paths.rclone, ['authorize', d.type || 'drive']);
+    let types = {
+        "Google Drive": 'drive'
+    }
+    const proc = spawn(_paths.rclone, ['authorize', types[d.type] || 'drive']);
 
     let output = '';
 

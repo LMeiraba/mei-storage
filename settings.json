@@ -1,18 +1,21 @@
 {
   "pools": [
     {
-      "name": "Google Pool",
-      "remotes": [
-        "gdrive1",
-        "gdrive2"
-      ]
-    },
-    {
       "name": "Second Pool",
       "remotes": [
         "gdrive3",
         "gdrive4"
       ]
+    },
+    {
+      "name": "Google Pool",
+      "label": "Google Pool",
+      "remotes": [
+        "gdrive1",
+        "gdrive2"
+      ],
+      "mountPoint": "X:",
+      "startup": false
     }
   ],
   "drives": [
@@ -39,6 +42,13 @@
     {
       "name": "gdrive4",
       "type": "drive"
+    },
+    {
+      "name": "s",
+      "label": "s",
+      "type": "",
+      "mountPoint": ":",
+      "startup": false
     }
   ]
 }
