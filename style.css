@@ -181,6 +181,48 @@ button.danger:hover {
 .status-dot.offline {
   background-color: #f44336;
 }
+/* Card header left side with icon */
+.card-title-with-icon {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.card-icon {
+  width: 30px;
+  height: 30px;
+  border-radius: 2px;
+  object-fit: cover; 
+  flex-shrink: 0;
+}
+/* Text beside icon */
+.card-title-text h2 {
+  margin: 0;
+  font-size: 18px;
+}
+
+.card-title-text small {
+  font-size: 11px;
+  color: #aaa;
+  display: block;
+  margin-top: 2px;
+}
+
+/* Status (bottom right) */
+.status-indicator.startup-status {
+  position: absolute;
+  bottom: 10px;
+  right: 12px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: #4caf50;
+}
+
+.status-indicator .startup {
+  color: #4caf50;
+}
 
 /* ======= Scrollbar ======= */
 body::-webkit-scrollbar,
@@ -773,7 +815,50 @@ button:disabled {
   border: 1px solid #555;
   color: #f0f0f0;
 }
+.icon-picker-box {
+  width: 64px;
+  height: 64px;
+  border: 2px dashed #777;
+  border-radius: 8px;
+  background: #2a2a2a;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  position: relative;
+  transition: border-color 0.2s, background 0.2s;
+}
 
+.icon-picker-box:hover {
+  border-color: #aaa;
+  background: #333;
+}
+
+.icon-picker-box img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  border-radius: 4px;
+}
+
+.icon-picker-box span {
+  color: #ccc;
+  font-size: 12px;
+  text-align: center;
+  line-height: 1.2;
+}
+
+.hidden {
+  display: none !important;
+}
+
+#form-icon-preview {
+  width: 30px;
+  height: 30px;
+  border-radius: 2px;
+  object-fit: cover; 
+  flex-shrink: 0;
+}
 #remote-search {
   width: 100%;
   padding: 8px 10px;

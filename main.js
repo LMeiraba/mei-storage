@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, Tray, Menu } = require("electron");
+const { app, BrowserWindow, ipcMain, Tray, Menu,dialog} = require("electron");
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
@@ -224,6 +224,17 @@ ipcMain.handle('get-used-mounts', async () => {
         return [];
     }
 })
+ipcMain.handle('select-icon-file', async () => {
+  const result = await dialog.showOpenDialog({
+    title: 'Select Icon File',
+    properties: ['openFile'],
+    filters: [
+      { name: 'Icons', extensions: ['ico'] }
+    ]
+  });
+  return result.canceled ? null : result.filePaths[0];
+});
+//auth flow 
 let auth_process = null
 ipcMain.on('start-auth', (event, d) => {
     if (d === 'cancel') {

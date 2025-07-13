@@ -51,8 +51,13 @@ function renderPools(pools) {
         card.innerHTML = `
     <div class="card-header">
       <div>
-        <h2>${pool.mountPoint??''} ${pool.label}</h2>
-        <small>${pool.name}</small>
+        <div class="card-title-with-icon">
+        ${pool.icon? `<img src="${pool.icon}" alt="Pool Icon" class="card-icon" />`: ''}
+        <div class="card-title-text">
+            <h2>${pool.mountPoint ?? ''} ${pool.label}</h2>
+            <small>${pool.name}</small>
+        </div>
+      </div>
       </div>
       <div class="card-actions">
         <button ${pool.mounted ? 'disabled' : ''} onclick="showConfirmation('Mount this pool?', 'handleMount', '${pool.name}', 'pool')">🔼 Mount</button>
@@ -70,8 +75,8 @@ function renderPools(pools) {
           <button class="danger" onclick="showConfirmation('Delete this pool?', 'handleDelete','${pool.name}','pool')">🗑️ Delete</button>
       </div>
     </div>
-    <div class="status-indicator">
-      <span class="startup"style="color: #4caf50">${pool.startup? '🚀Startup  ':``}</span>
+    <div class="status-indicator startup-status">
+      <span class="startup">${pool.startup ? '🚀Startup' : ``}</span>
       <span class="status-dot ${isMounted ? 'online' : 'offline'}"></span>
       <span class="status-text">${statusText}</span>
     </div>
@@ -108,8 +113,13 @@ function renderDrives(drives) {
         card.innerHTML = `
       <div class="card-header">
         <div>
-          <h2>${drive.mountPoint??''} ${drive.label??drive.name}</h2>
-          <small>${drive.type}${drive.user? ` • mail: ${drive.user}`: ''}</small>
+          <div class="card-title-with-icon">
+            ${drive.icon? `<img src="${drive.icon}" alt="Drive Icon" class="card-icon" />`: ``}
+            <div class="card-title-text">
+                <h2>${drive.mountPoint ?? ''} ${drive.label ?? drive.name}</h2>
+                <small>${drive.type}${drive.user ? ` • mail: ${drive.user}` : ''}</small>
+            </div>
+        </div>
         </div>
         <div class="card-actions">
           <button ${drive.mounted ? 'disabled' : ''} onclick="showConfirmation('Mount this drive?', 'handleMount','${drive.name}','drive')">🔼 Mount</button>
@@ -121,12 +131,20 @@ function renderDrives(drives) {
           <button class="primary" onclick="handleUsage('${drive.name}','drive')">📊 Usage</button>
           <button class="danger" onclick="showConfirmation('Mount this drive?', 'handleDelete','${drive.name}','drive')">🗑️ Delete</button>
       </div>
-      ${drive.mounted?
-         `<div class="status-indicator">
+      <div class="status-indicator startup-status">
+       ${drive.startup ? '<span class="startup">🚀 Startup</span>' : ''}
+       ${drive.mounted ? `
+        <span class="status-dot online}"></span>
+        <span class="status-text">Mounted}</span>
+        ` :''}
+       
+      </div>
+      ${drive.mounted ?
+                `<div class="status-indicator">
             <span class="status-dot online"></span>
             <span class="status-text">Mounted</span>
         </div>`
-        :''}
+                : ''}
     `;
         container.appendChild(card);
     });
@@ -143,7 +161,18 @@ async function handleDrivesTab() {
     }, 10000); // every 10 seconds
 
 }
-
+async function selectIconFile() {
+    const path = await window.driveAPI.selectIcon();
+    if(path) {
+        // document.getElementById('form-icon-preview').src = path
+        // document.getElementById('form-icon-preview').style.display = 'block'
+        const preview = document.getElementById('form-icon-preview');
+        const placeholder = document.getElementById('form-icon-placeholder');
+        preview.src = path;
+        preview.classList.remove('hidden');
+        placeholder.classList.add('hidden');
+    }
+}
 
 window.handleMount = async (name, type) => {
     console.log(`Mounting ${type}: ${name}`);
@@ -443,11 +472,12 @@ let editName = null;
 let availableOptions = []; // To be filled by API
 let selectedRemotes = [];
 let selectedType = null; // For drive type selection
+let org_data = {}
 async function showFormModal(type, mode, initialData = {}) {
     currentFormType = type;
     editMode = (mode === "edit");
     editName = initialData?.name || null;
-
+    org_data = initialData
     document.getElementById("form-modal-title").innerText = `${editMode ? "Edit" : "Add"} ${capitalize(type)}`;
     document.getElementById("form-submit-btn").innerText = editMode ? "Save Changes" : "Create";
     document.getElementById("form-modal").classList.remove("hidden");
@@ -461,6 +491,13 @@ async function showFormModal(type, mode, initialData = {}) {
     document.getElementById("form-label").value = initialData.label || "";
     document.getElementById("form-mount").value = initialData.mountPoint?.replace(":", "") || "";
     document.getElementById("form-startup").checked = initialData.startup || false;
+    if(initialData.icon){
+        const preview = document.getElementById('form-icon-preview');
+        const placeholder = document.getElementById('form-icon-placeholder');
+        preview.src = initialData.icon;
+        preview.classList.remove('hidden');
+        placeholder.classList.add('hidden');
+    }
     //get available options (from api)
     if (type === "pool") {
         availableOptions = (await window.driveAPI.getDrives?.()).map(d => d.name) || [];
@@ -500,7 +537,7 @@ function filterRemoteOptions(inputValue) {
     const value = inputValue.toLowerCase();
     const list = document.getElementById("remote-options");
     list.innerHTML = "";
-    
+
     availableOptions
         .filter(opt => opt.toLowerCase().includes(value) && !selectedRemotes.includes(opt))
         .forEach(opt => {
@@ -525,7 +562,7 @@ function renderSelectedRemotes() {
         container.appendChild(tag);
     });
     const optionsContainer = document.getElementById("remote-options");
-    
+
     optionsContainer.innerHTML = "";
     availableOptions
         .filter(remote => !selectedRemotes.includes(remote))
@@ -585,35 +622,41 @@ async function submitFormModal() {
     const name = document.getElementById("form-name").value.trim();
     const label = document.getElementById("form-label").value.trim();
     let mount = document.getElementById("form-mount").value.trim().toUpperCase();
-    if(mount.length) mount = mount  + ":"
+    if (mount.length) mount = mount + ":"
     const startup = document.getElementById("form-startup").checked;
+    const icon = document.getElementById('form-icon-preview').src
     //selectedRemotes, selectedType
     let data = {
         name: editMode ? editName : name,
         label,
         mountPoint: mount,
         startup,
+        icon,
         remotes: currentFormType === "pool" ? selectedRemotes : null,
         type: currentFormType === "drive" ? (selectedType || document.getElementById("drive-type-input").value) : null,
     }
-    if(!editMode && !name) {
+    console.log(data)
+    if (!editMode && !name) {
         //maybe check if name already exist?
         return showToast('Name is a required field!', 'error')
     }
-    if(currentFormType === "pool" && data.remotes.length <2){
+    if (currentFormType === "pool" && data.remotes.length < 2) {
         return showToast('At Least two remotes need to selected!', 'error')
     }
-    if(!editMode && currentFormType === "drive" && !data.type){
+    if (!editMode && currentFormType === "drive" && !data.type) {
         return showToast('You need to select a type!', 'error')
     }
-    if(data.startup){
-        if(!data.mountPoint){
+    if (data.startup) {
+        if (!data.mountPoint) {
             return showToast('You need to specify a mount point to set startup.', 'error')
         }
-        let startup_mounts = await window.driveAPI.getUsedMounts()
-        if(startup_mounts.includes(data.mountPoint)){
-            return showToast(`Mount point ${data.mountPoint} is already used for startup mount.`,'error')
+        if((editMode && data.mountPoint !== org_data.mountPoint) || !editMode){
+            let startup_mounts = await window.driveAPI.getUsedMounts()
+            if (startup_mounts.includes(data.mountPoint)) {
+                return showToast(`Mount point ${data.mountPoint} is already used for startup mount.`, 'error')
+            }
         }
+        
     }
     console.log("Form data:", data);
     if (currentFormType === "pool") {
@@ -667,6 +710,12 @@ async function submitFormModal() {
 async function closeFormModal() {
     resetForm();
     document.getElementById("form-modal").classList.add("hidden");
+    document.getElementById('form-icon-preview').style.display = 'block'
+    const preview = document.getElementById('form-icon-preview');
+    const placeholder = document.getElementById('form-icon-placeholder');
+    preview.src = '';
+    preview.classList.add('hidden');
+    placeholder.classList.remove('hidden');
 }
 // function loadMultiSelect(preselected = []) {
 //     const container = document.getElementById("form-dynamic-select");
@@ -697,12 +746,12 @@ function showAuthModal() {
     document.getElementById('auth-spinner').style.display = 'block';
     document.getElementById('auth-progress-modal').classList.remove('hidden');
 }
-function cancelAuth(){
+function cancelAuth() {
     document.getElementById('auth-progress-modal').classList.add('hidden');
     document.getElementById('auth-log-stream').textContent = ''
     document.getElementById('auth-spinner').style.display = 'none'
     window.driveAPI.startAuth('cancel')
-    showToast('Drive auth cancelled!','warning')
+    showToast('Drive auth cancelled!', 'warning')
 }
 function updateAuthLog(line) {
     line = line.includes('NOTICE:') ? line.split('NOTICE: ')[1] : ''
@@ -711,7 +760,7 @@ function updateAuthLog(line) {
     el.scrollTop = el.scrollHeight;
 }
 
-async function completeAuthModal(success, token,data) {
+async function completeAuthModal(success, token, data) {
     updateAuthLog(success ? '✅ Drive Authorized!' : '❌ Failed to authorize.');
     if (success) {
         updateAuthLog(`NOTICE: Authorized, initialling drive..`)
@@ -719,7 +768,7 @@ async function completeAuthModal(success, token,data) {
         await window.driveAPI.add('drive', data);
         document.getElementById('auth-progress-modal').classList.add('hidden');
         closeFormModal();
-        showToast(`Drive added successfully!`,'success')
+        showToast(`Drive added successfully!`, 'success')
     } else {
         document.getElementById('auth-progress-modal').classList.add('hidden');
         showToast(`Failed to link Drive`, 'error')
@@ -732,4 +781,4 @@ async function completeAuthModal(success, token,data) {
     // }, 2500);
 }
 window.driveAPI.onLog((msg) => updateAuthLog(msg));
-window.driveAPI.onComplete(async(token,d) => await completeAuthModal(true, token,d));
+window.driveAPI.onComplete(async (token, d) => await completeAuthModal(true, token, d));

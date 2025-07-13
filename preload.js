@@ -4,6 +4,7 @@ contextBridge.exposeInMainWorld("driveAPI", {
     getPools: () => ipcRenderer.invoke("get-pools"),
     getDrives: () => ipcRenderer.invoke("get-drives"),
     getActivity: () => ipcRenderer.invoke("get-activity"),
+    selectIcon: () => ipcRenderer.invoke('select-icon-file'),
     unmountPool: (name) => ipcRenderer.invoke("unmount-pool", name),
     unmountDrive: (name) => ipcRenderer.invoke("unmount-drive", name),
     singleMount: (name, type) => ipcRenderer.invoke("single-mount", name, type),

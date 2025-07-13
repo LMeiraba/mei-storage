@@ -10,6 +10,9 @@ A modern Electron-based desktop app to manage Google Drive remotes and Rclone po
   <img src="img/2.png" alt="Screenshot 2" width="49%" />
 </p>
 
+### v3.0.0-beta.1
+> drive icon, health, sync, notification, include winfsp
+
 ## 🚀 Features
 
 - 🔐 Seamlessly add new Google Drives with OAuth
@@ -21,6 +24,17 @@ A modern Electron-based desktop app to manage Google Drive remotes and Rclone po
 - 💾 Persistent settings and remotes
 
 ---
+## 🛠️ Upcoming Features
+
+- 🔔 In-app Notifications
+- ❗ Better Error Reporting and Feedback
+- 🔍 Mount Detection and Health Monitoring
+- 🖌️ Custom Icon for each drive
+- empty trash
+- move/copy file (remote to remove)
+- advance config
+- encryption
+- google photo
 
 ## 📥 How to Download
 
@@ -65,12 +79,7 @@ This will generate:
 ![Screenshot](img/7.png)
 
 
-## 🛠️ Upcoming Features
 
-- 🔔 In-app Notifications
-- ❗ Better Error Reporting and Feedback
-- 🔍 Mount Detection and Health Monitoring
-- 🖌️ Custom Icon for each drive
 
 ### 💬 Discord
 

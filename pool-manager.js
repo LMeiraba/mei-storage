@@ -84,7 +84,7 @@ async function mountPools(_paths) {
         await startMount(pool, 'pools', rclonePath);
     }
     //set drive icons for all
-    setDriveIcon(settings.pools.map(p => p.mountPoint), _paths.icon);
+    setDriveIcon(settings.pools.map(p => p.mountPoint), settings.pools.map(p => p.icon ?? _paths.icon));
 }
 function singleMount(name, type, _paths) {
     let settings = JSON.parse(fs.readFileSync(_paths.settings, 'utf-8'))
@@ -94,7 +94,7 @@ function singleMount(name, type, _paths) {
     console.log(data)
     let m = startMount(data, `${type}s`, rclonePath);
     console.log(m)
-    setDriveIcon([data.mountPoint], _paths.icon);
+    setDriveIcon([data.mountPoint], [data.icon ?? _paths.icon]);
     return m
 }
 async function unmountPool(poolName) {
@@ -244,6 +244,7 @@ function addPool(data, _paths) {
         label: data.label || data.name,
         remotes: data.remotes,
         mountPoint: data.mountPoint,
+        icon: data.icon? data.icon.replace('file:///','') :null,
         startup: data.startup || false
     });
     fs.writeFileSync(_paths.settings, JSON.stringify(settings, null, 2), 'utf-8');
@@ -264,6 +265,7 @@ async function addDrive(data, _paths) {
         label: data.label || data.name,
         type: data.type,
         mountPoint: data.mountPoint,
+        icon: data.icon? data.icon.replace('file:///','') :null,
         startup: data.startup || false
     });
     fs.writeFileSync(_paths.settings, JSON.stringify(settings, null, 2), 'utf-8');
@@ -303,6 +305,7 @@ function editPool(data, _paths) {
     //     startup: data.startup || false
     // });
     let index = settings.pools.findIndex(p => p.name === data.name)
+    data.icon = data.icon? data.icon.replace('file:///','') :null
     if (index !== -1) {
         settings.pools[index] = {
             ...settings.pools[index],
@@ -321,6 +324,7 @@ function editDrive(data, _paths) {
             ...settings.drives[index],
             label: data.label,
             startup: data.startup || false,
+            icon: data.icon? data.icon.replace('file:///','') :null,
             mountPoint: data.mountPoint
         };
     }
@@ -344,13 +348,13 @@ module.exports = {
     getEmail,
     activeMounts
 }
-function setDriveIcon(driveLetters, iconPath) {
-    console.log(`icon: ${iconPath}`)
+function setDriveIcon(driveLetters, iconPaths) {
+    console.log(`icon: ${iconPaths}`)
     // If path is like 'X:', convert to just 'X'
     let cmds = []
     for (let i = 0; i < driveLetters.length; i++) {
         const letter = driveLetters[i].replace(':', '').toUpperCase();
-        const escapedIconPath = iconPath.replace(/\\/g, '\\\\');
+        const escapedIconPath = iconPaths[i].replace(/\\/g, '\\\\');
 
         cmds.push(`
     New-Item -Path 'HKLM:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Explorer\\DriveIcons\\${letter}' -Force;
