@@ -1,5 +1,5 @@
 node_modules/
 dist/
 /icon.png
-/test.js
+test/
 settings.json

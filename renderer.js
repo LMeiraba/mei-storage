@@ -31,6 +31,13 @@ function showTab(tabName) {
         driveRefreshInterval = null;
     }
 }
+window.driveAPI.onOpenTab((tabName) => {
+  // Assuming you have logic like selectTab('notification')
+  showTab(tabName);
+  if(tabName === 'notification'){
+    renderNotification()
+  }
+});
 function renderPools(pools) {
     const container = document.getElementById("pools-container");
     container.innerHTML = ""; // clear before render
@@ -52,7 +59,7 @@ function renderPools(pools) {
     <div class="card-header">
       <div>
         <div class="card-title-with-icon">
-        ${pool.icon? `<img src="${pool.icon}" alt="Pool Icon" class="card-icon" />`: ''}
+        ${pool.icon ? `<img src="${pool.icon}" alt="Pool Icon" class="card-icon" />` : ''}
         <div class="card-title-text">
             <h2>${pool.mountPoint ?? ''} ${pool.label}</h2>
             <small>${pool.name}</small>
@@ -114,7 +121,7 @@ function renderDrives(drives) {
       <div class="card-header">
         <div>
           <div class="card-title-with-icon">
-            ${drive.icon? `<img src="${drive.icon}" alt="Drive Icon" class="card-icon" />`: ``}
+            ${drive.icon ? `<img src="${drive.icon}" alt="Drive Icon" class="card-icon" />` : ``}
             <div class="card-title-text">
                 <h2>${drive.mountPoint ?? ''} ${drive.label ?? drive.name}</h2>
                 <small>${drive.type}${drive.user ? ` • mail: ${drive.user}` : ''}</small>
@@ -136,7 +143,7 @@ function renderDrives(drives) {
        ${drive.mounted ? `
         <span class="status-dot online}"></span>
         <span class="status-text">Mounted}</span>
-        ` :''}
+        ` : ''}
        
       </div>
       ${drive.mounted ?
@@ -163,7 +170,7 @@ async function handleDrivesTab() {
 }
 async function selectIconFile() {
     const path = await window.driveAPI.selectIcon();
-    if(path) {
+    if (path) {
         // document.getElementById('form-icon-preview').src = path
         // document.getElementById('form-icon-preview').style.display = 'block'
         const preview = document.getElementById('form-icon-preview');
@@ -418,13 +425,15 @@ function renderActivity(fileArray) {
       ${isCompleted ? `
       <div class="activity-right">
         <div>✅ Completed:</div>
-        Completed at: ${formatTimeDisplay(file.completed_at)} <br>
+        Completed: <span class="timestamp" data-time="${(new Date(file.completed_at)).getTime()}"></span> <br>
         Time taken: ${timeTaken}
       </div>` : ""}
     `;
 
         container.appendChild(card);
+        updateTimestamps()
     });
+
 }
 setInterval(() => {
     if (document.getElementById("activity").style.display !== "none") {
@@ -443,9 +452,74 @@ function formatTimeDisplay(iso) {
     const fullString = date.toLocaleString();
     return `<span title="${fullString}">${timeString}</span>`;
 }
+function formatRelativeTime(unixTime) {
+    const now = Date.now();
+    const then = unixTime;
+    const diff = then - now;
+
+    const rtf = new Intl.RelativeTimeFormat('en', { numeric: 'auto' });
+
+    const seconds = Math.round(diff / 1000);
+    const minutes = Math.round(diff / 1000 / 60);
+    const hours = Math.round(diff / 1000 / 60 / 60);
+    const days = Math.round(diff / 1000 / 60 / 60 / 24);
+
+    if (Math.abs(seconds) < 60) return rtf.format(seconds, 'second');
+    if (Math.abs(minutes) < 60) return rtf.format(minutes, 'minute');
+    if (Math.abs(hours) < 24) return rtf.format(hours, 'hour');
+    return rtf.format(days, 'day');
+}
+function updateTimestamps() {
+    const stamps = document.querySelectorAll('.timestamp');
+    stamps.forEach(el => {
+        const unixTime = parseInt(el.dataset.time);
+        const absolute = new Date(unixTime).toLocaleString();
+        const relative = formatRelativeTime(unixTime);
+
+        el.textContent = relative;
+        el.title = absolute; // like Discord tooltip
+    });
+}
+//render notification
+async function renderNotification() {
+    let notificationArray = (await window.driveAPI.getNoti())?.reverse()
+    console.log(notificationArray)
+    const container = document.getElementById("notification-list");
+    container.innerHTML = "";
+
+    if (!notificationArray.length) {
+        container.innerHTML = "<div style='text-align:center; color:#888;'>No recent notifications.</div>";
+        return;
+    }
+    notificationArray.forEach(note => {
+        const card = document.createElement("div");
+        card.className = "notification-card";
+
+        card.innerHTML = `
+        <div class="notif-header">
+            <div class="notif-title">${note.title}</div>
+            <div class="notif-right">
+            <div class="notif-time" title="${note.time}"><span class="timestamp" data-time="${note.time}"></span></div>
+            <button class="notif-close" title="Dismiss">✖</button>
+            </div>
+        </div>
+        <div class="notif-body">${note.body}</div>
+        `;
+        // Add close behavior
+        card.querySelector(".notif-close").addEventListener("click", () => {
+            card.remove();
+            window.driveAPI.getNoti(note.id)
+        });
+        container.appendChild(card);
+        updateTimestamps()
+    });
+}
+setInterval(async() => {
+    if (document.getElementById("notification").style.display !== "none") {
+        await renderNotification()
+    }
+}, 10000);
 // add/edit- pool/drive logic
-
-
 function handleAddPool() {
     console.log("Add Pool clicked");
     showFormModal("pool", "create");
@@ -491,7 +565,7 @@ async function showFormModal(type, mode, initialData = {}) {
     document.getElementById("form-label").value = initialData.label || "";
     document.getElementById("form-mount").value = initialData.mountPoint?.replace(":", "") || "";
     document.getElementById("form-startup").checked = initialData.startup || false;
-    if(initialData.icon){
+    if (initialData.icon) {
         const preview = document.getElementById('form-icon-preview');
         const placeholder = document.getElementById('form-icon-placeholder');
         preview.src = initialData.icon;
@@ -650,13 +724,13 @@ async function submitFormModal() {
         if (!data.mountPoint) {
             return showToast('You need to specify a mount point to set startup.', 'error')
         }
-        if((editMode && data.mountPoint !== org_data.mountPoint) || !editMode){
+        if ((editMode && data.mountPoint !== org_data.mountPoint) || !editMode) {
             let startup_mounts = await window.driveAPI.getUsedMounts()
             if (startup_mounts.includes(data.mountPoint)) {
                 return showToast(`Mount point ${data.mountPoint} is already used for startup mount.`, 'error')
             }
         }
-        
+
     }
     console.log("Form data:", data);
     if (currentFormType === "pool") {

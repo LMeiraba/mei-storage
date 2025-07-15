@@ -647,6 +647,95 @@ button:disabled {
 .activity-progress {
   margin-top: 10px;
 }
+.timestamp {
+  text-decoration: underline dotted;
+  cursor: pointer;
+  transition: color 0.2s;
+}
+
+.timestamp:hover {
+  color: #aaa;
+}
+/* notification card*/
+#notification-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 20px;
+}
+
+/* Entire card */
+.notification-card {
+  background: #2b2b2b;
+  color: #f0f0f0;
+  padding: 14px 18px;
+  border-radius: 10px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+  transition: background 0.2s ease;
+  position: relative;
+}
+
+.notification-card:hover {
+  background: #333;
+}
+
+/* Header with title, time, and X */
+.notif-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 14px;
+  margin-bottom: 6px;
+}
+
+/* Title on the left */
+.notif-title {
+  font-weight: 600;
+  color: #4a90e2;
+  flex-grow: 1;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+/* Container for time + close button */
+.notif-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+/* Time text */
+.notif-time {
+  font-size: 12px;
+  color: #bbb;
+}
+
+/* Dismiss (X) button */
+.notif-close {
+  background: none;
+  border: none;
+  color: #999;
+  font-size: 14px;
+  cursor: pointer;
+  padding: 2px 6px;
+  line-height: 1;
+  border-radius: 4px;
+  transition: background 0.2s ease, color 0.2s ease;
+}
+
+.notif-close:hover {
+  color: #fff;
+  background: #444;
+}
+
+/* Notification body below */
+.notif-body {
+  font-size: 13px;
+  color: #ccc;
+  line-height: 1.4;
+}
 
 /* Progress bar styles */
 .progress-bar {
@@ -856,6 +945,12 @@ button:disabled {
   width: 30px;
   height: 30px;
   border-radius: 2px;
+  object-fit: cover; 
+  flex-shrink: 0;
+}
+#app-icon {
+  width: 50px;
+  height: 50px;
   object-fit: cover; 
   flex-shrink: 0;
 }

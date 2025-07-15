@@ -5,6 +5,7 @@ contextBridge.exposeInMainWorld("driveAPI", {
     getDrives: () => ipcRenderer.invoke("get-drives"),
     getActivity: () => ipcRenderer.invoke("get-activity"),
     selectIcon: () => ipcRenderer.invoke('select-icon-file'),
+    getNoti: (filter) => ipcRenderer.invoke('get-noti',filter),
     unmountPool: (name) => ipcRenderer.invoke("unmount-pool", name),
     unmountDrive: (name) => ipcRenderer.invoke("unmount-drive", name),
     singleMount: (name, type) => ipcRenderer.invoke("single-mount", name, type),
@@ -16,4 +17,5 @@ contextBridge.exposeInMainWorld("driveAPI", {
     startAuth: (data) => ipcRenderer.send('start-auth',data),
     onLog: (cb) => ipcRenderer.on('auth-log', (_, msg) => cb(msg)),
     onComplete: (cb) => ipcRenderer.on('auth-complete', (_, token,d) => cb(token, d)),
+    onOpenTab: (callback) => ipcRenderer.on('open-tab', (_, tabId) => callback(tabId))
 });

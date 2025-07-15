@@ -81,7 +81,7 @@ async function mountPools(_paths) {
         // });
         // child.unref();
         // activeMounts[pool.name] = child;
-        await startMount(pool, 'pools', rclonePath);
+        await startMount(pool, 'pools', rclonePath,_paths.config_json?.rc);
     }
     //set drive icons for all
     setDriveIcon(settings.pools.map(p => p.mountPoint), settings.pools.map(p => p.icon ?? _paths.icon));
@@ -92,7 +92,7 @@ function singleMount(name, type, _paths) {
     if (!data.mountPoint) return 'No mount point specified for this drive/pool';
     const rclonePath = _paths.rclone
     console.log(data)
-    let m = startMount(data, `${type}s`, rclonePath);
+    let m = startMount(data, `${type}s`, rclonePath,_paths.config_json?.rc);
     console.log(m)
     setDriveIcon([data.mountPoint], [data.icon ?? _paths.icon]);
     return m
@@ -205,16 +205,16 @@ async function getUsage(name, type, _paths) {
     ).then(usage => ({ drives: remotes, usage }));
 }
 
-async function getActivity() {
+async function getActivity(_paths) {
     //how to filter syncing files from actual transfer??
     const combinedMounts = [
         ...activeMounts.pools.map((m, i) => ({ ...m, mountIndex: i, mountType: 'pool' })),
         ...activeMounts.drives.map((m, i) => ({ ...m, mountIndex: i + activeMounts.pools.length, mountType: 'drive' }))
-    ];
+    ].filter(d => !d.error)
 
     const allTransfers = (
         await Promise.all(
-            combinedMounts.map(m => getTransfersForMount(m, m.mountIndex, m.mountType))
+            combinedMounts.map(m => getTransfersForMount(m, m.mountIndex, m.mountType,_paths.config_json?.rc))
         )
     ).flat();
 
@@ -225,8 +225,8 @@ async function getActivity() {
 
     // transferring sorted by mountIndex
     transferring.sort((a, b) => a.mountIndex - b.mountIndex);
-    console.log([...transferring, ...transferred])
-    return [...transferring, ...transferred];
+    console.log([...transferring, ...transferred].filter(a => a.dstFs?.length))
+    return [...transferring, ...transferred].filter(a => a.dstFs?.length);
 }
 function addPool(data, _paths) {
     let settings = JSON.parse(fs.readFileSync(_paths.settings, 'utf-8'))
@@ -346,6 +346,7 @@ module.exports = {
     editPool,
     editDrive,
     getEmail,
+    startMount,
     activeMounts
 }
 function setDriveIcon(driveLetters, iconPaths) {
@@ -372,32 +373,86 @@ function setDriveIcon(driveLetters, iconPaths) {
         }
     );
 }
-async function startMount(data, type, rclonePath) {
+async function startMount(data, type, rclonePath,rc) {
     try {
         const port = await getPort()
         const child = spawn(rclonePath, [
             'mount', `${data.name}:`, data.mountPoint,
             '--vfs-cache-mode', 'full',
             '--rc',
-            '--rc-no-auth',
+            // '--rc-no-auth',
+            `--rc-user=${rc.user}`,
+            `--rc-pass=${rc.pass}`,
             `--rc-addr=localhost:${port}`,
-            '--log-level', 'DEBUG',
+            // '--log-level', 'DEBUG',
             // `--log-file=${data.name}.log`,
             '--stats=5s',
             `--volname`, data.label ?? data.name,
         ], {
-            detached: true,
-            stdio: 'ignore'
+            detached: true
         });
         child.unref();
+        if (!child || typeof child.on !== 'function') {
+            console.log('Failed to spawn process.');
+            return;
+        }
+        if(data.retry){
+            activeMounts[type] = activeMounts[type].filter(r => r.name !== data.name)
+        }
         activeMounts[type].push({
             name: data.name,
             mountPoint: data.mountPoint,
             child: child,
-            port: port
+            port: port,
+            type: type,
+            mounted: true
         })
-        console.log(activeMounts)
-        console.log(`🚀 Mounted ${data.name} -> ${data.mountPoint}`);
+        child.on('close', code => {
+            console.log(`[exit-${data.name}]: ${code}`)
+            activeMounts[type] = activeMounts[type].filter(r => r.name !== data.name)
+            activeMounts[type].push({
+                name: data.name,
+                mountPoint: data.mountPoint,
+                child: child,
+                port: port,
+                mounted: false,
+                error: 2,
+                type: type
+            })
+        });
+        child.on('error', e => {
+            console.log(`[error-${data.name}] ${e}`)
+            activeMounts[type] = activeMounts[type].filter(r => r.name !== data.name)
+            activeMounts[type].push({
+                name: data.name,
+                mountPoint: data.mountPoint,
+                child: child,
+                port: port,
+                mounted: false,
+                error: 2,
+                type: type
+            })
+            killProcess(child)
+        })
+        // child.stdout.on('data', d => console.log(`[stdout-${data.name}]: ${d}`));
+        child.stderr.on('data', d => {
+            console.error(`[stderr-${data.name}]: ${d}`)
+            if(d.includes('CRITICAL: Failed')){
+                activeMounts[type] = activeMounts[type].filter(r => r.name !== data.name)
+                activeMounts[type].push({
+                    name: data.name,
+                    mountPoint: data.mountPoint,
+                    child: child,
+                    port: port,
+                    mounted: false,
+                    error: 2,
+                    type: type
+                })
+                killProcess(child)
+            }
+        });
+        // console.log(activeMounts)
+        console.log(`Mounted ${data.name} -> ${data.mountPoint}`);
         return true
     } catch (e) {
         console.log(e)
@@ -405,13 +460,26 @@ async function startMount(data, type, rclonePath) {
     }
 
 }
-async function getTransfersForMount(mount, mountIndex, mountType) {
+function killProcess(child,pid){
+    try {
+        child.kill();
+        return true
+    } catch (err) {
+        return false
+    }
+}
+async function getTransfersForMount(mount, mountIndex, mountType,rc) {
     const base = `http://localhost:${mount.port}`;
     let active = [];
     let completed = [];
 
     try {
-        const statsRes = await fetch(`${base}/core/stats`, { method: 'POST' });
+        const statsRes = await fetch(`${base}/core/stats`, { 
+            method: 'POST',
+            headers: {
+                'Authorization': 'Basic ' + btoa(`${rc.user}:${rc.pass}`)
+            }
+        });
         const stats = await statsRes.json();
         active = (stats.transferring || []).map(item => ({
             ...item,
@@ -425,7 +493,12 @@ async function getTransfersForMount(mount, mountIndex, mountType) {
     }
 
     try {
-        const doneRes = await fetch(`${base}/core/transferred`, { method: 'POST' });
+        const doneRes = await fetch(`${base}/core/transferred`, {
+            method: 'POST',
+            headers: {
+                'Authorization': 'Basic ' + btoa(`${rc.user}:${rc.pass}`)
+            }
+        });
         const done = await doneRes.json();
         completed = (done.transferred || []).map(item => ({
             ...item,
@@ -440,9 +513,6 @@ async function getTransfersForMount(mount, mountIndex, mountType) {
     }
 
     return [...active, ...completed];
-}
-async function checkAlive() {
-    //if mount failed? no connection(internet)
 }
 async function getEmail(token) {//for google drive
     try {

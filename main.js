@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, Tray, Menu,dialog} = require("electron");
+const { app, BrowserWindow, ipcMain, Tray, Menu, dialog, Notification } = require("electron");
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
@@ -17,6 +17,8 @@ const configDir = path.dirname(CONFIG_PATH);
 if (!fs.existsSync(configDir)) {
     fs.mkdirSync(configDir, { recursive: true });
 }
+let connection = true
+let notifications = []
 const isDev = !app.isPackaged;
 const basePath = isDev ? __dirname : path.join(process.resourcesPath, 'app.asar');
 const rclonePath = path.join(isDev ? __dirname : process.resourcesPath, 'bin', 'rclone.exe');
@@ -26,21 +28,24 @@ let settingsPath = isDev
     : path.join(userDataPath, "settings.json");
 let destIcon = path.join(__dirname, "icon.ico")
 console.log(settingsPath)
-
+let config_jsonPATH = path.join(basePath, 'config.json')
 let _paths = {
     config: CONFIG_PATH,
     rclone: rclonePath,
     base: basePath,
     userData: userDataPath,
     settings: settingsPath,
-    icon: destIcon
+    icon: destIcon,
+    config_json: JSON.parse(fs.readFileSync(config_jsonPATH, 'utf-8'))
 }
 if (!fs.existsSync(_paths.config)) {
     fs.writeFileSync(CONFIG_PATH, stringifyINI({}), 'utf-8')
 }
 if (!fs.existsSync(settingsPath)) {
-    fs.writeFileSync(settingsPath, JSON.stringify({ pools: [], drives: [] }, null, 2));
+    fs.writeFileSync(settingsPath, JSON.stringify({ pools: [], drives: [], app: {version: app.getVersion()} }, null, 2));
 }
+console.log(app.getVersion())
+updateConfig()
 if (!isDev) {
     const srcIcon = path.join(_paths.base, "icon.ico");
     _paths.icon = path.join(_paths.userData, "icon.ico");
@@ -135,7 +140,7 @@ ipcMain.handle("get-pools", async () => {
             label: pool.label || pool.name,
             remotes: pool.remotes,
             mountPoint: pool.mountPoint,
-            mounted: poolManager.activeMounts.pools.find(p => p.name === pool.name) ? true : false,
+            mounted: poolManager.activeMounts.pools.find(p => p.name === pool.name)?.mounted ? true : false,
         };
     })
     return x
@@ -194,7 +199,7 @@ ipcMain.handle("delete", async (event, name, type) => {
     return true;
 });
 ipcMain.handle("get-activity", async () => {
-    return await poolManager.getActivity();
+    return await poolManager.getActivity(_paths);
 })
 ipcMain.handle("edit", async (event, type, data) => {
     if (type === "pool") {
@@ -225,15 +230,22 @@ ipcMain.handle('get-used-mounts', async () => {
     }
 })
 ipcMain.handle('select-icon-file', async () => {
-  const result = await dialog.showOpenDialog({
-    title: 'Select Icon File',
-    properties: ['openFile'],
-    filters: [
-      { name: 'Icons', extensions: ['ico'] }
-    ]
-  });
-  return result.canceled ? null : result.filePaths[0];
+    const result = await dialog.showOpenDialog({
+        title: 'Select Icon File',
+        properties: ['openFile'],
+        filters: [
+            { name: 'Icons', extensions: ['ico'] }
+        ]
+    });
+    return result.canceled ? null : result.filePaths[0];
 });
+ipcMain.handle('get-noti', async (event, filter) => {
+    if (filter) {
+        console.log(`filtering: ${filter}`)
+        notifications = notifications.filter(n => n.id !== filter)
+    }
+    return notifications
+})
 //auth flow 
 let auth_process = null
 ipcMain.on('start-auth', (event, d) => {
@@ -297,7 +309,13 @@ app.whenReady().then(async () => {
         });
     }
 });
-
+function updateConfig() {
+    let settings = JSON.parse(fs.readFileSync(_paths.settings, 'utf-8'))
+    _paths.config_json = {
+        ..._paths.config_json,
+        ...settings.app
+    }
+}
 function parseINI(str) {
     const result = {};
     let section = null;
@@ -323,9 +341,152 @@ function stringifyINI(data) {
         .join('\n\n');
 }
 
-// setInterval(async() => {
-//     await poolManager.getActivity();
-// }, interval = 5000); // Adjust interval as needed
+async function checkAlive() {
+    //if mount failed? no connection(internet)
+    let online = await isOnline()
+    console.log(`is online? ${online}, prev: ${connection}`)
+    if (connection && !online) {
+        connection = false
+        // poolManager.activeMounts.drives?.filter(d => !d.error).map(d => ({
+        //     ...d,
+        //     mounted: false,
+        //     error: 1
+        // }))
+        // poolManager.activeMounts.pools?.filter(d => !d.error).map(p => ({
+        //     ...p,
+        //     mounted: false,
+        //     error: 1
+        // }))
+        poolManager.activeMounts.pools = poolManager.activeMounts.pools.map(p => {
+            if (!p.error) {
+                p.error = 1,
+                p.mounted = false
+            }
+            return p
+        })
+        poolManager.activeMounts.drives = poolManager.activeMounts.drives.map(p => {
+            if (!p.error) {
+                p.error = 1,
+                p.mounted = false
+            }
+            return p
+        })
+        sendNoti({
+            title: `Connection lost..`,
+            body: `Existing mount will work after connection is restored.`,
+            icon: _paths.icon,
+            silent: false,
+            urgency: 'normal',
+            // actions: [{ type: 'button', text: 'Open Folder' }],
+            closeButtonText: 'Close',
+        })
+    } else if (online && !connection) {
+        //connected
+        //retry the error type 2
+        poolManager.activeMounts.pools = poolManager.activeMounts.pools.map(p => {
+            if (p.error === 1) {
+                p.error = null,
+                p.mounted = true
+            }
+            return p
+        })
+        poolManager.activeMounts.drives = poolManager.activeMounts.drives.map(p => {
+            if (p.error === 1) {
+                p.error = null,
+                p.mounted = true
+            }
+            return p
+        })
+        connection = true
+        let all = [
+            ...poolManager.activeMounts.pools.filter(r => r.error === 2),
+            ...poolManager.activeMounts.drives.filter(r => r.error === 2)
+        ]
+        if (all.length) {
+            all.forEach(async (data) => {
+                data.retry = true
+                await poolManager.startMount(data, data.type, _paths.rclone, _paths.config_json.rc)
+            })
+        }
+        sendNoti({
+            title: "Back online",
+            body: `All existing mounts will work fine.`,
+            icon: _paths.icon,
+            silent: false,
+            urgency: 'normal',
+            closeButtonText: 'Close',
+        })
+    }
+    let pool_e = poolManager.activeMounts.pools.filter(r => r.error === 2 && !r.noti)
+    let drive_e = poolManager.activeMounts.drives.filter(r => r.error === 2 && !r.noti)
+    if (pool_e) {
+        poolManager.activeMounts.pools = poolManager.activeMounts.pools.map(p => {
+            if (p.error === 2 && !p.noti) {
+                sendNoti({
+                    title: `Mount Failed - ${p.mountPoint}`,
+                    body: `Mounting remote failed: ${p.name}`
+                })
+                p.noti = true
+            }
+            return p
+        })
+    }
+    if (drive_e) {
+        poolManager.activeMounts.drives = poolManager.activeMounts.drives.map(p => {
+            if (p.error === 2 && !p.noti) {
+                sendNoti({
+                    title: `Mount Failed - ${p.mountPoint}`,
+                    body: `Mounting remote failed: ${p.name}`
+                })
+                p.noti = true
+            }
+            return p
+        })
+    }
+    // check for "CRITICAL: Failed to create file system for" in stout??(if failed at startup)
+    // or constantly make req to the rc for each one (also gives the same even if no internet)
+    // check if there is error in the mountedremotes object??
+    // maybe check the usage or ls, using rclone.exe??
+}
+async function sendNoti(data) {
+    const notification = new Notification(data);
+
+    // notification.on('action', (a) => {
+    //     console.log(`action??`, a)
+    // });
+    notifications.push({
+        ...data,
+        time: (new Date()).getTime(),
+        id: generateId()
+    })
+    const mainWindow = BrowserWindow.getAllWindows()[0]; // or use a stored variable
+
+    notification.on('click', async() => {
+        if (mainWindow) {
+            if (mainWindow.isMinimized()) mainWindow.restore();
+            mainWindow.show();
+            mainWindow.focus();
+            mainWindow.webContents.send('open-tab', 'notification');
+        }
+    });
+    notifications = notifications.slice(0, 50)
+    notification.show();
+    return notification
+}
+async function isOnline() {
+    try {
+        const res = await fetch('https://www.google.com/favicon.ico', { method: 'HEAD', cache: 'no-store' });
+        return res.ok;
+    } catch {
+        return false;
+    }
+}
+function generateId() {
+    return Date.now().toString(36) + '-' + Math.random().toString(36).substr(2, 6);
+}
+setInterval(async () => {
+    await checkAlive()
+}, 10000);
 // setInterval(async () => {
 //     let settings = JSON.parse(fs.readFileSync(_paths.settings, 'utf-8'))
 //     let to_get = settings.drives.filter(d => !d.user)

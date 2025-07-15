@@ -10,8 +10,12 @@ A modern Electron-based desktop app to manage Google Drive remotes and Rclone po
   <img src="img/2.png" alt="Screenshot 2" width="49%" />
 </p>
 
-### v3.0.0-beta.1
-> drive icon, health, sync, notification, include winfsp
+### v2.5.0-beta.1
+- Custom drive icon
+- Mount health monitoring
+- Added notification for: lost connection, mount failed
+- Added authorized rclone remote control
+- Bug fixes: activity showing downloads, unable to edit mountpoint ,etc..
 
 ## 🚀 Features
 
@@ -23,6 +27,7 @@ A modern Electron-based desktop app to manage Google Drive remotes and Rclone po
 - 📡 Live Transfer Activity Monitor
 - 💾 Persistent settings and remotes
 
+
 ---
 ## 🛠️ Upcoming Features
 
@@ -31,10 +36,11 @@ A modern Electron-based desktop app to manage Google Drive remotes and Rclone po
 - 🔍 Mount Detection and Health Monitoring
 - 🖌️ Custom Icon for each drive
 - empty trash
-- move/copy file (remote to remove)
+- move/copy file (remote to remote)
 - advance config
 - encryption
 - google photo
+- Sync, include winfsp
 
 ## 📥 How to Download
 
@@ -51,7 +57,7 @@ A modern Electron-based desktop app to manage Google Drive remotes and Rclone po
 ### 🧪 Option 2: Run from Source
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/mei-storage.git
+git clone https://github.com/LMeiraba/mei-storage.git
 cd mei-storage
 npm install
 npm start
@@ -65,8 +71,7 @@ npm run dist
 ```
 This will generate:
 
-- `dist/MEI Storage Setup X.X.X.exe` — Installer with Start Menu/Desktop support  
-- `dist/MEI Storage Portable/` — Standalone version, no install required
+- `dist/MEI Storage Setup X.X.X.exe` — Installer with Start Menu/Desktop support
 
 > Make sure `bin/rclone.exe` exists and `icon.ico` is valid.
 

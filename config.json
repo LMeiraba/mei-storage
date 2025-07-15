@@ -1,1 +1,6 @@
-{}
+{
+    "rc": {
+        "pass": "admin123",
+        "user": "admin"
+    }
+}

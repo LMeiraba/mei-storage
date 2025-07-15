@@ -11,7 +11,9 @@
 <body>
     <div class="app-container">
         <div class="sidebar">
-            <div class="logo">MEI</div>
+            <div class="logo">
+                <img id="app-icon" src="./icon.ico" alt="Icon"/>
+            </div>
             <ul class="menu">
                 <li onclick="showTab('activity')" id="tab-activity" class="active">Activity</li>
                 <li onclick="showTab('notification')" id="tab-notification">Notification</li>
@@ -38,7 +40,7 @@
             <div id="settings" class="tab" style="display: none;">
                 Settings here
                 <br>
-                app version: 2.0.0-beta.1
+                app version: 2.5.0-beta.1
                 <br>
                 rclone version: 1.70.2
                 <br>
@@ -46,6 +48,9 @@
                 <br>
                 startup: true
                 <br>
+            </div>
+            <div id="screen" class="tab" style="display: none;">
+                <div id="screen-container"></div>
             </div>
         </div>
     </div>
